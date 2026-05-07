@@ -1,103 +1,271 @@
-import { useEffect, useState } from 'react'
-import { collection, query, where, getDocs, updateDoc, doc } from 'firebase/firestore'
+import { useState, useEffect } from 'react'
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Link, useNavigate } from 'react-router-dom'
+import { signOut } from 'firebase/auth'
+import { auth } from '../firebase'
 
-function Admin() {
-  const [pendingUsers, setPendingUsers] = useState([])
+export default function Admin() {
+  const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const { currentUser, logout } = useAuth()
+  const [bulkLoading, setBulkLoading] = useState(false)
   const navigate = useNavigate()
+  const { currentUser } = useAuth()
 
-  // Only allow this email to access admin
-  const ADMIN_EMAIL = 'rasemetselebohang24@gmail.com'
-
+  // Admin protection
   useEffect(() => {
-    if (currentUser?.email!== ADMIN_EMAIL) {
+    if (currentUser?.email !== 'rasemetselebohang24@gmail.com') {
       navigate('/')
-      return
     }
-
-    async function fetchPending() {
-      const q = query(
-        collection(db, 'users'),
-        where('profileComplete', '==', true),
-        where('verified', '==', false)
-      )
-      const querySnapshot = await getDocs(q)
-      const users = querySnapshot.docs.map(doc => ({
-        id: doc.id,...doc.data()
-      }))
-      setPendingUsers(users)
-      setLoading(false)
-    }
-    fetchPending()
   }, [currentUser, navigate])
 
-  async function approveUser(userId) {
-    await updateDoc(doc(db, 'users', userId), { verified: true })
-    setPendingUsers(pendingUsers.filter(user => user.id!== userId))
+  // Fetch ALL users - not just verified ones
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const fetchUsers = async () => {
+    setLoading(true)
+    try {
+      const querySnapshot = await getDocs(collection(db, 'users'))
+      const usersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setUsers(usersData)
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  if (currentUser?.email!== ADMIN_EMAIL) return null
+  const toggleVerified = async (userId, currentStatus) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        verified: !currentStatus
+      })
+      fetchUsers() // Refresh list
+    } catch (error) {
+      console.error('Error updating verification:', error)
+      alert('Failed to update verification status')
+    }
+  }
+
+  const togglePaid = async (userId, currentStatus) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        paid: !currentStatus
+      })
+      fetchUsers() // Refresh list
+    } catch (error) {
+      console.error('Error updating payment status:', error)
+      alert('Failed to update payment status')
+    }
+  }
+
+  const handleBulkRevoke = async () => {
+    if (!window.confirm('Are you sure? This will remove payment access from ALL providers on 31 July 2026.')) {
+      return
+    }
+    
+    setBulkLoading(true)
+    try {
+      const providerUsers = users.filter(u => 
+        (u.accountType === 'individual' || u.accountType === 'business') && u.paid === true
+      )
+      
+      for (const user of providerUsers) {
+        await updateDoc(doc(db, 'users', user.id), { paid: false })
+      }
+      
+      alert(`Successfully revoked payment for ${providerUsers.length} providers`)
+      fetchUsers() // Refresh list
+    } catch (error) {
+      console.error('Error in bulk revoke:', error)
+      alert('Failed to bulk revoke payments')
+    } finally {
+      setBulkLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await signOut(auth)
+    navigate('/login')
+  }
+
+  if (loading) return <div className="p-8">Loading users...</div>
+
+  const providers = users.filter(u => u.accountType === 'individual' || u.accountType === 'business')
+  const clients = users.filter(u => u.accountType === 'client')
+  const paidProviders = providers.filter(u => u.paid === true)
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      <nav className="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-bold">Shimla Admin</Link>
-        <div className="flex items-center gap-4">
-          <Link to="/browse" className="text-slate-300 hover:text-white">Browse</Link>
-          <button onClick={logout} className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg font-semibold transition">
-            Log Out
+    <div className="p-8 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Admin Panel</h1>
+        <div className="flex gap-3">
+          <Link 
+            to="/"
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+          >
+            ← Back to Dashboard
+          </Link>
+          <button 
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+          >
+            Logout
           </button>
         </div>
-      </nav>
+      </div>
 
-      <div className="max-w-4xl mx-auto p-4">
-        <h1 className="text-3xl font-bold mb-6">Pending Verifications</h1>
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="bg-blue-50 border-blue-200 p-4 rounded-lg">
+          <p className="text-blue-900 text-sm font-semibold">Total Providers</p>
+          <p className="text-3xl font-bold text-blue-900">{providers.length}</p>
+        </div>
+        <div className="bg-green-50 border-green-200 p-4 rounded-lg">
+          <p className="text-green-900 text-sm font-semibold">Paid Providers</p>
+          <p className="text-3xl font-bold text-green-900">{paidProviders.length}</p>
+        </div>
+        <div className="bg-purple-50 border-purple-200 p-4 rounded-lg">
+          <p className="text-purple-900 text-sm font-semibold">Total Clients</p>
+          <p className="text-3xl font-bold text-purple-900">{clients.length}</p>
+        </div>
+      </div>
 
-        {loading? (
-          <p className="text-slate-400">Loading pending users...</p>
-        ) : pendingUsers.length === 0? (
-          <div className="text-center py-10 bg-slate-800 rounded-lg">
-            <p className="text-xl text-slate-400">No pending verifications</p>
-            <p className="text-slate-500 mt-2">All caught up ✅</p>
+      {/* Bulk Revoke Button */}
+      <div className="bg-red-50 border-red-200 p-4 rounded-lg mb-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <p className="font-semibold text-red-900">Bulk Revoke - 31 July 2026</p>
+            <p className="text-red-700 text-sm">Remove payment access from all {paidProviders.length} paid providers</p>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {pendingUsers.map(user => (
-              <div key={user.id} className="bg-slate-800 border border-slate-700 rounded-lg p-5">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-lg font-bold">{user.companyName || user.email}</h3>
-                    <p className="text-slate-400 text-sm">
-                      {user.accountType === 'business'? `CIPC: ${user.regNumber}` : 'Individual'}
-                    </p>
-                  </div>
-                  <span className="text-xs bg-yellow-500/20 text-yellow-300 px-3 py-1 rounded-full font-semibold">
-                    PENDING
-                  </span>
-                </div>
+          <button
+            onClick={handleBulkRevoke}
+            disabled={bulkLoading || paidProviders.length === 0}
+            className="bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold"
+          >
+            {bulkLoading ? 'Processing...' : `Bulk Revoke (${paidProviders.length})`}
+          </button>
+        </div>
+      </div>
 
-                <p className="text-slate-300 mb-2">Skills: {user.skills?.join(', ')}</p>
-                <p className="text-slate-400 text-sm mb-3">Phone: {user.phone}</p>
-                {user.hourlyRate && <p className="text-green-400 mb-3">Rate: R{user.hourlyRate}/hr</p>}
-                <p className="text-slate-400 text-sm mb-4 italic">"{user.bio}"</p>
+      {/* Providers Table */}
+      <div className="bg-white border rounded-lg overflow-hidden mb-8">
+        <div className="bg-gray-50 px-6 py-4 border-b">
+          <h2 className="text-xl font-semibold">All Providers</h2>
+          <p className="text-gray-600 text-sm">Verify new providers and manage payments</p>
+        </div>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Verified</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Paid</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {providers.map(user => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-medium text-gray-900">{user.name} {user.surname}</p>
+                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="text-xs text-gray-400 font-mono">{user.id}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="capitalize text-sm text-gray-700">{user.accountType}</span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{user.location}</td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => toggleVerified(user.id, user.verified)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        user.verified 
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
+                    >
+                      {user.verified ? 'Verified' : 'Unverified'}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => togglePaid(user.id, user.paid)}
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        user.paid 
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200' 
+                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
+                    >
+                      {user.paid ? 'Paid' : 'Unpaid'}
+                    </button>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-sm text-gray-500">
+                      {user.skills ? user.skills.join(', ') : 'No skills'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {providers.length === 0 && (
+                <tr>
+                  <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    No providers yet
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-                <button
-                  onClick={() => approveUser(user.id)}
-                  className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-semibold transition"
-                >
-                  Approve & List on Shimla
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+      {/* Clients Table */}
+      <div className="bg-white border rounded-lg overflow-hidden">
+        <div className="bg-gray-50 px-6 py-4 border-b">
+          <h2 className="text-xl font-semibold">All Clients</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
+                <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700">Location</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {clients.map(user => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-gray-900">{user.name} {user.surname}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{user.email}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{user.phone}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700">{user.location}</td>
+                </tr>
+              ))}
+              {clients.length === 0 && (
+                <tr>
+                  <td colSpan="4" className="px-6 py-8 text-center text-gray-500">
+                    No clients yet
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
 }
-
-export default Admin
