@@ -10,11 +10,10 @@ export default function Dashboard() {
   const [copySuccess, setCopySuccess] = useState(false)
 
   useEffect(() => {
-    // Only run redirect logic when loading is done and userData is null
     if (!loading && !userData) {
       navigate('/onboarding')
     }
-  }, [loading, userData, navigate]) // Stable dependencies only
+  }, [loading, userData, navigate])
 
   const copyUID = async () => {
     if (!currentUser?.uid) return
@@ -34,19 +33,29 @@ export default function Dashboard() {
   const isVerified = userData.verified === true
   const isIndividual = userData.accountType === 'individual'
   const isBusiness = userData.accountType === 'business'
+  const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
+      {/* Header with Admin Back Button */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
-        {userData?.email === 'rasemetselebohang24@gmail.com' && (
+        <div className="flex gap-3">
+          {isAdmin && (
+            <Link 
+              to="/admin"
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+            >
+              ← Back to Admin Panel
+            </Link>
+          )}
           <Link 
-            to="/admin"
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+            to="/browse"
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
           >
-            Admin Panel
+            Browse Providers
           </Link>
-        )}
+        </div>
       </div>
 
       {/* Payment Status Banner - Only for Individual/Business providers */}
@@ -121,18 +130,6 @@ export default function Dashboard() {
             {copySuccess ? 'Copied!' : 'Copy UID'}
           </button>
         </div>
-      </div>
-
-      {/* Browse Providers Link */}
-      <div className="bg-green-50 border-green-200 rounded-lg p-4">
-        <p className="font-semibold text-green-900 mb-2">Browse Providers</p>
-        <p className="text-green-700 mb-3">View verified providers in your area</p>
-        <Link 
-          to="/browse"
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 inline-block"
-        >
-          Open Browse
-        </Link>
       </div>
     </div>
   )
