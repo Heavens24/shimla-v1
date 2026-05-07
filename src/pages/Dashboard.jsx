@@ -35,45 +35,44 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8">Loading...</div>
   
-  // Admin with no userData → show minimal admin dashboard
-  if (!userData) {
-    const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
-    if (isAdmin) {
-      return (
-        <div className="p-8 max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-            <div className="flex gap-3">
-              <Link 
-                to="/admin"
-                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
-              >
-                ← Back to Admin Panel
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-          <div className="bg-blue-50 border-blue-200 p-6 rounded-lg">
-            <p className="text-blue-900 font-semibold">Admin Account</p>
-            <p className="text-blue-700">You don’t need to complete onboarding. Use the Admin Panel to manage providers.</p>
+  const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+
+  // ADMIN VIEW - Clean admin dashboard, no provider UI
+  if (isAdmin) {
+    return (
+      <div className="p-8 max-w-4xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+          <div className="flex gap-3">
+            <Link 
+              to="/admin"
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+            >
+              ← Back to Admin Panel
+            </Link>
+            <button 
+              onClick={handleLogout}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            >
+              Logout
+            </button>
           </div>
         </div>
-      )
-    }
-    return null
+        <div className="bg-blue-50 border-blue-200 p-6 rounded-lg">
+          <p className="text-blue-900 font-semibold text-lg mb-2">Admin Account</p>
+          <p className="text-blue-700">You don’t need to complete onboarding or payments. Use the Admin Panel to manage all providers and clients.</p>
+        </div>
+      </div>
+    )
   }
+
+  // If no userData and not admin → redirect handled in useEffect
+  if (!userData) return null
 
   const isPaid = userData.paid === true
   const isVerified = userData.verified === true
   const isIndividual = userData.accountType === 'individual'
   const isBusiness = userData.accountType === 'business'
-  const isClient = userData.accountType === 'client'
-  const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
 
   // VERIFICATION GATE: Workers/Businesses must be verified before seeing dashboard
   if ((isIndividual || isBusiness) && !isVerified) {
@@ -107,20 +106,13 @@ export default function Dashboard() {
     )
   }
 
+  // PROVIDER/CLIENT VIEW
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Header with Admin Back Button + Logout */}
+      {/* Header - No Admin button for non-admin users */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="flex gap-3">
-          {isAdmin && (
-            <Link 
-              to="/admin"
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
-            >
-              ← Back to Admin Panel
-            </Link>
-          )}
           <Link 
             to="/browse"
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
@@ -190,25 +182,27 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Firebase UID Card */}
-      <div className="bg-blue-50 border-blue-200 rounded-lg p-4 mb-6">
-        <p className="font-semibold text-blue-900 mb-2">Your Firebase UID</p>
-        <p className="text-sm text-blue-700 mb-3">Send this to the admin on WhatsApp when you pay R10</p>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={currentUser?.uid || ''}
-            readOnly
-            className="flex-1 border-blue-300 rounded px-3 py-2 bg-white text-sm font-mono"
-          />
-          <button
-            onClick={copyUID}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            {copySuccess ? 'Copied!' : 'Copy UID'}
-          </button>
+      {/* Firebase UID Card - Only for providers */}
+      {(isIndividual || isBusiness) && (
+        <div className="bg-blue-50 border-blue-200 rounded-lg p-4 mb-6">
+          <p className="font-semibold text-blue-900 mb-2">Your Firebase UID</p>
+          <p className="text-sm text-blue-700 mb-3">Send this to the admin on WhatsApp when you pay R10</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={currentUser?.uid || ''}
+              readOnly
+              className="flex-1 border-blue-300 rounded px-3 py-2 bg-white text-sm font-mono"
+            />
+            <button
+              onClick={copyUID}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              {copySuccess ? 'Copied!' : 'Copy UID'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
