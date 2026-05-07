@@ -1,16 +1,15 @@
 import { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
+import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { auth, db } from '../firebase'
 
 function Signup() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [accountType, setAccountType] = useState('individual') // default to worker
+  const [accountType, setAccountType] = useState('individual') // 'individual' = worker, 'client' = customer
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signup } = useAuth()
   const navigate = useNavigate()
 
   async function handleSubmit(e) {
@@ -24,15 +23,18 @@ function Signup() {
     try {
       setError('')
       setLoading(true)
-      const { user } = await signup(email, password)
       
-      // Create user doc with accountType
+      // Create Firebase Auth user
+      const { user } = await createUserWithEmailAndPassword(auth, email, password)
+      
+      // Create Firestore user document
       await setDoc(doc(db, 'users', user.uid), {
         email: user.email,
         accountType: accountType, // 'individual', 'business', or 'client'
         createdAt: new Date(),
         verified: false,
-        profileComplete: accountType === 'client' // clients don’t need onboarding
+        paid: false,
+        profileComplete: accountType === 'client' // clients skip onboarding
       })
       
       // Route based on account type
@@ -42,7 +44,7 @@ function Signup() {
         navigate('/onboarding') // Workers/Businesses complete profile first
       }
     } catch (err) {
-      setError(err.message)
+      setError('Failed to create account: ' + err.message)
     } finally {
       setLoading(false)
     }
