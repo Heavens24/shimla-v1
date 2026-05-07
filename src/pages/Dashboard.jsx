@@ -12,7 +12,7 @@ export default function Dashboard() {
   useEffect(() => {
     const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
     // Only redirect to onboarding if NOT admin and no userData
-    if (!loading && !userData && !isAdmin) {
+    if (!loading &&!userData &&!isAdmin) {
       navigate('/onboarding')
     }
   }, [loading, userData, currentUser, navigate])
@@ -34,7 +34,7 @@ export default function Dashboard() {
   }
 
   if (loading) return <div className="p-8">Loading...</div>
-  
+
   const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
 
   // ADMIN VIEW - Clean admin dashboard, no provider UI
@@ -44,13 +44,13 @@ export default function Dashboard() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
           <div className="flex gap-3">
-            <Link 
+            <Link
               to="/admin"
               className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
             >
               ← Back to Admin Panel
             </Link>
-            <button 
+            <button
               onClick={handleLogout}
               className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
             >
@@ -73,9 +73,10 @@ export default function Dashboard() {
   const isVerified = userData.verified === true
   const isIndividual = userData.accountType === 'individual'
   const isBusiness = userData.accountType === 'business'
+  const isClient = userData.accountType === 'client'
 
   // VERIFICATION GATE: Workers/Businesses must be verified before seeing dashboard
-  if ((isIndividual || isBusiness) && !isVerified) {
+  if ((isIndividual || isBusiness) &&!isVerified) {
     return (
       <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-slate-800 border-slate-700 rounded-2xl p-8 text-center">
@@ -95,7 +96,7 @@ export default function Dashboard() {
           <p className="text-slate-500 text-sm mb-6">
             Send this UID to the admin on WhatsApp after you complete the R10 payment.
           </p>
-          <button 
+          <button
             onClick={handleLogout}
             className="w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-lg font-semibold transition"
           >
@@ -106,20 +107,104 @@ export default function Dashboard() {
     )
   }
 
-  // PROVIDER/CLIENT VIEW
+  // CLIENT DASHBOARD - Clean and simple
+  if (isClient) {
+    return (
+      <div className="p-8 max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Welcome, {userData.name || 'Client'}</h1>
+            <p className="text-gray-600">Find trusted service providers near you</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+          >
+            Logout
+          </button>
+        </div>
+
+        {/* Main Action Card */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 rounded-2xl p-8 mb-8">
+          <div className="flex items-start gap-4">
+            <div className="bg-blue-600 p-3 rounded-xl">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold text-blue-900 mb-2">Browse Service Providers</h2>
+              <p className="text-blue-800 mb-4">Connect with verified electricians, plumbers, mechanics, tutors and more in your area.</p>
+              <Link
+                to="/browse"
+                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold transition"
+              >
+                Start Browsing →
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Profile Info Card */}
+        <div className="bg-white border rounded-xl p-6">
+          <h3 className="text-lg font-semibold mb-4">Your Profile</h3>
+          <div className="grid grid-cols-2 gap-4 text-gray-700">
+            <div>
+              <p className="text-sm text-gray-500">Name</p>
+              <p className="font-medium">{userData.name} {userData.surname}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Email</p>
+              <p className="font-medium">{userData.email}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Phone</p>
+              <p className="font-medium">{userData.phone || 'Not set'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Location</p>
+              <p className="font-medium">{userData.location || 'Not set'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* How It Works */}
+        <div className="mt-8 grid-cols-3 gap-4">
+          <div className="bg-white border rounded-xl p-4 text-center">
+            <div className="text-3xl mb-2">1</div>
+            <p className="font-semibold text-gray-900">Browse</p>
+            <p className="text-sm text-gray-600">Find providers by skill and location</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4 text-center">
+            <div className="text-3xl mb-2">2</div>
+            <p className="font-semibold text-gray-900">Contact</p>
+            <p className="text-sm text-gray-600">Reach out via WhatsApp</p>
+          </div>
+          <div className="bg-white border rounded-xl p-4 text-center">
+            <div className="text-3xl mb-2">3</div>
+            <p className="font-semibold text-gray-900">Hire</p>
+            <p className="text-sm text-gray-600">Discuss price and get the job done</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // PROVIDER DASHBOARD - Existing provider view
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Header - No Admin button for non-admin users */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="flex gap-3">
-          <Link 
+          <Link
             to="/browse"
             className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
           >
             Browse Providers
           </Link>
-          <button 
+          <button
             onClick={handleLogout}
             className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
           >
@@ -129,7 +214,7 @@ export default function Dashboard() {
       </div>
 
       {/* Payment Status Banner - Only for Individual/Business providers */}
-      {(isIndividual || isBusiness) && !isPaid && (
+      {(isIndividual || isBusiness) &&!isPaid && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
           <div className="flex justify-between items-center">
             <div>
@@ -159,7 +244,7 @@ export default function Dashboard() {
             {isVerified && (
               <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">Verified</span>
             )}
-            {isPaid ? (
+            {isPaid? (
               <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">Active until 30 Jul</span>
             ) : (
               <span className="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">Unpaid</span>
@@ -198,7 +283,7 @@ export default function Dashboard() {
               onClick={copyUID}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
             >
-              {copySuccess ? 'Copied!' : 'Copy UID'}
+              {copySuccess? 'Copied!' : 'Copy UID'}
             </button>
           </div>
         </div>
