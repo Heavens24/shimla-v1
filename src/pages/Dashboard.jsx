@@ -10,10 +10,12 @@ export default function Dashboard() {
   const [copySuccess, setCopySuccess] = useState(false)
 
   useEffect(() => {
-    if (!loading && !userData) {
+    const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+    // Only redirect to onboarding if NOT admin and no userData
+    if (!loading && !userData && !isAdmin) {
       navigate('/onboarding')
     }
-  }, [loading, userData, navigate])
+  }, [loading, userData, currentUser, navigate])
 
   const copyUID = async () => {
     if (!currentUser?.uid) return
@@ -32,7 +34,40 @@ export default function Dashboard() {
   }
 
   if (loading) return <div className="p-8">Loading...</div>
-  if (!userData) return null
+  
+  // If no userData AND not admin → redirect handled in useEffect
+  // If admin with no userData → show minimal admin dashboard
+  if (!userData) {
+    const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+    if (isAdmin) {
+      return (
+        <div className="p-8 max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <div className="flex gap-3">
+              <Link 
+                to="/admin"
+                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+              >
+                ← Back to Admin Panel
+              </Link>
+              <button 
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+          <div className="bg-blue-50 border-blue-200 p-6 rounded-lg">
+            <p className="text-blue-900 font-semibold">Admin Account</p>
+            <p className="text-blue-700">You don’t need to complete onboarding. Use the Admin Panel to manage providers.</p>
+          </div>
+        </div>
+      )
+    }
+    return null
+  }
 
   const isPaid = userData.paid === true
   const isVerified = userData.verified === true
