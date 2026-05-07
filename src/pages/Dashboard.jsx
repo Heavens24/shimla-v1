@@ -87,22 +87,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
-          {/* Quick Stats Preview */}
-          <div className="mt-8 grid-cols-3 gap-4">
-            <div className="bg-white border-gray-200 rounded-2xl shadow-md p-5 text-center">
-              <div className="text-3xl font-bold text-purple-600 mb-1">∞</div>
-              <p className="text-gray-600 text-sm font-medium">Full Access</p>
-            </div>
-            <div className="bg-white border-gray-200 rounded-2xl shadow-md p-5 text-center">
-              <div className="text-3xl font-bold text-blue-600 mb-1">24/7</div>
-              <p className="text-gray-600 text-sm font-medium">Control</p>
-            </div>
-            <div className="bg-white border-gray-200 rounded-2xl shadow-md p-5 text-center">
-              <div className="text-3xl font-bold text-green-600 mb-1">Secure</div>
-              <p className="text-gray-600 text-sm font-medium">Protected</p>
-            </div>
-          </div>
         </div>
       </div>
     )
@@ -117,33 +101,102 @@ export default function Dashboard() {
   const isBusiness = userData.accountType === 'business'
   const isClient = userData.accountType === 'client'
 
-  // VERIFICATION GATE: Workers/Businesses must be verified before seeing dashboard
+  // VERIFICATION GATE - Premium Caring Design
   if ((isIndividual || isBusiness) && !isVerified) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white border-gray-200 rounded-3xl shadow-xl p-8 text-center">
-          <div className="w-16 h-16 bg-yellow-50 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-md">
-            <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+        <div className="max-w-md w-full">
+          
+          {/* Main Card */}
+          <div className="bg-white border-gray-200 rounded-3xl shadow-2xl p-8 text-center">
+            
+            {/* Icon + Animation */}
+            <div className="relative mb-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full flex items-center justify-center mx-auto shadow-lg">
+                <svg className="w-10 h-10 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white shadow-md"></div>
+            </div>
+
+            {/* Title + Message */}
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Profile Under Review</h2>
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Thank you for joining Shimla! Our team is carefully reviewing your provider profile to ensure quality and safety for our community. 
+              <span className="font-semibold text-gray-900"> This usually takes 24 hours.</span>
+            </p>
+
+            {/* UID Card */}
+            <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 rounded-2xl p-5 mb-6 text-left">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-sm font-semibold text-blue-900">Your Firebase UID</p>
+              </div>
+              <div className="bg-white border-gray-200 rounded-xl p-3 mb-3">
+                <p className="font-mono text-sm text-gray-900 break-all">{currentUser?.uid}</p>
+              </div>
+              <button
+                onClick={copyUID}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                {copySuccess ? '✓ Copied to Clipboard!' : 'Copy UID'}
+              </button>
+              <p className="text-xs text-blue-800 mt-3 text-center">
+                Send this UID to the admin on WhatsApp after you complete the R10 payment
+              </p>
+            </div>
+
+            {/* What Happens Next */}
+            <div className="bg-gray-50 border-gray-200 rounded-2xl p-4 mb-6 text-left">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">What happens next?</h3>
+              <div className="space-y-2">
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-blue-600">1</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Admin verifies your profile</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-blue-600">2</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Complete R10 payment via WhatsApp</p>
+                </div>
+                <div className="flex items-start gap-2">
+                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs font-bold text-blue-600">3</span>
+                  </div>
+                  <p className="text-sm text-gray-700">Your profile goes live on Shimla</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Support Message */}
+            <div className="bg-green-50 border-green-200 rounded-2xl p-4 mb-6">
+              <p className="text-sm text-green-800 font-medium">
+                💙 We’re here to help you succeed on Shimla
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                Questions? Reach out to us on WhatsApp anytime
+              </p>
+            </div>
+
+            {/* Logout Button */}
+            <button 
+              onClick={handleLogout}
+              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition"
+            >
+              Logout
+            </button>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Profile Under Review</h2>
-          <p className="text-gray-600 mb-6">
-            Your provider profile is being reviewed by our admin team. This usually takes 24 hours.
+
+          {/* Footer */}
+          <p className="text-center text-gray-500 text-xs mt-6">
+            Shimla • South Africa’s trusted service platform
           </p>
-          <div className="bg-gray-50 border-gray-200 rounded-2xl p-4 mb-6">
-            <p className="text-sm text-gray-500 mb-2">Your Firebase UID</p>
-            <p className="font-mono text-sm text-gray-900 break-all">{currentUser?.uid}</p>
-          </div>
-          <p className="text-gray-500 text-sm mb-6">
-            Send this UID to the admin on WhatsApp after you complete the R10 payment.
-          </p>
-          <button 
-            onClick={handleLogout}
-            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition"
-          >
-            Logout
-          </button>
         </div>
       </div>
     )
