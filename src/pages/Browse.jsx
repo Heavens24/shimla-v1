@@ -1,94 +1,102 @@
 import { useState, useEffect } from 'react'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
-function Browse() {
-  const [providers, setProviders] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selectedSkill, setSelectedSkill] = useState('All')
-  const { userData } = useAuth()
+const SKILLS = [
+  'All', 'Electrician', 'Plumber', 'Carpenter', 'Mechanic', 'Cleaner', 
+  'Painter', 'Gardener', 'Tutor', 'Barber', 'Nail Technician', 'Welder'
+]
 
-  const skills = ['All', 'Electrician', 'Plumber', 'Carpenter', 'Mechanic', 'Cleaner', 'Painter', 'Gardener', 'Tutor', 'Barber', 'Nail Technician']
+export default function Browse() {
+  const [providers, setProviders] = useState([])
+  const [filteredProviders, setFilteredProviders] = useState([])
+  const [selectedSkill, setSelectedSkill] = useState('All')
+  const [loading, setLoading] = useState(true)
+  const { currentUser, userData } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
-    const q = query(
-      collection(db, 'users'),
-      where('accountType', 'in', ['individual', 'business']),
-      where('verified', '==', true)
-    )
-    const unsub = onSnapshot(q, (snap) => {
-      setProviders(snap.docs.map(d => ({ id: d.id,...d.data() })))
-      setLoading(false)
-    }, (err) => {
-      console.error('Failed to load providers:', err)
-      setLoading(false)
-    })
-    return unsub
+    fetchProviders()
   }, [])
 
-  const filteredProviders = selectedSkill === 'All'
-  ? providers
-    : providers.filter(p => p.skills?.includes(selectedSkill))
+  useEffect(() => {
+    if (selectedSkill === 'All') {
+      setFilteredProviders(providers)
+    } else {
+      setFilteredProviders(providers.filter(p => p.skills?.includes(selectedSkill)))
+    }
+  }, [selectedSkill, providers])
 
-  const formatPhoneForWhatsApp = (phone) => {
-    if (!phone) return ''
-    let cleaned = phone.replace(/\s+/g, '').replace(/\+/g, '')
-    if (cleaned.startsWith('0')) cleaned = '27' + cleaned.slice(1)
-    if (!cleaned.startsWith('27')) cleaned = '27' + cleaned
-    return cleaned
+  const fetchProviders = async () => {
+    setLoading(true)
+    try {
+      const q = query(
+        collection(db, 'users'),
+        where('accountType', 'in', ['individual', 'business']),
+        where('verified', '==', true),
+        where('paid', '==', true)
+      )
+      const querySnapshot = await getDocs(q)
+      const providersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+      setProviders(providersData)
+      setFilteredProviders(providersData)
+    } catch (error) {
+      console.error('Error fetching providers:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const getInitials = (name, surname) => {
-    return `${name?.[0] || ''}${surname?.[0] || ''}`.toUpperCase()
-  }
-
-  const getWhatsAppMessage = (providerName, skill, location) => {
-    const firstName = providerName?.split(' ')[0] || 'there'
-    const serviceText = skill === 'All'? 'your services' : skill.toLowerCase()
-    const locationText = location || 'your area'
-
-    return `Hi ${firstName}, I found you on Shimla and I’m looking for help with ${serviceText} in ${locationText}. Are you available?`
-  }
-
-  if (loading) return (
-    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-slate-400">Loading providers...</p>
-      </div>
-    </div>
-  )
+  const isClient = userData?.accountType === 'client'
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white">
-      {/* Header */}
-      <div className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-5">
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => window.history.back()} className="text-slate-400 hover:text-white transition">
-              ← Back
-            </button>
-            <h1 className="text-lg font-bold">Shimla</h1>
-            <div className="w-12"></div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        
+        {/* Header */}
+        <div className="mb-8">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 font-medium mb-4 transition"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back
+          </Link>
+          
+          <div className="bg-white border-gray-200 rounded-3xl shadow-xl p-8">
+            <div className="flex items-center gap-4 mb-3">
+              <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-lg flex items-center justify-center">
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Shimla</h1>
+                <p className="text-gray-600">Verified Service Providers in South Africa</p>
+              </div>
+            </div>
+            <p className="text-gray-700 font-medium">{providers.length} providers available nationwide</p>
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold">Verified Service Providers in South Africa</h2>
-          <p className="text-slate-400 text-sm mt-1">{filteredProviders.length} providers available nationwide</p>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Skill Filter */}
-        <div className="mb-8 overflow-x-auto pb-2 -mx-4 px-4">
-          <div className="flex gap-2 w-max">
-            {skills.map(skill => (
+        {/* Skill Filter Pills */}
+        <div className="mb-8 overflow-x-auto pb-2">
+          <div className="flex gap-3">
+            {SKILLS.map(skill => (
               <button
                 key={skill}
                 onClick={() => setSelectedSkill(skill)}
-                className={`px-4 py-2.5 rounded-full font-medium whitespace-nowrap transition ${
+                className={`px-5 py-3 rounded-2xl font-semibold text-sm whitespace-nowrap transition transform hover:scale-[1.05] ${
                   selectedSkill === skill
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border-slate-700'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-600/30'
+                    : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300 shadow-md'
                 }`}
               >
                 {skill}
@@ -97,106 +105,128 @@ function Browse() {
           </div>
         </div>
 
-        {/* Providers Grid */}
-        {filteredProviders.length === 0? (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl">🔍</span>
-            </div>
-            <h3 className="text-xl font-bold mb-2">No providers found</h3>
-            <p className="text-slate-400">We don’t have verified {selectedSkill.toLowerCase()}s in your area yet.</p>
-            <p className="text-slate-500 text-sm mt-2">Try another skill or check back soon.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredProviders.map(provider => {
-              const fullName = `${provider.name || ''} ${provider.surname || ''}`.trim()
-              const displayName = fullName || 'Provider'
-              const location = provider.location || 'South Africa'
-              const whatsappMessage = encodeURIComponent(getWhatsAppMessage(fullName, selectedSkill, location))
-
-              return (
-                <div key={provider.id} className="bg-slate-800 border border-slate-700 rounded-2xl p-5 hover:border-slate-600 transition">
-                  {/* Provider Header */}
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center font-bold text-lg shadow-lg shadow-blue-600/20">
-                      {getInitials(provider.name, provider.surname) || 'P'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="text-lg font-bold truncate">
-                          {displayName}
-                        </h3>
-                        <span className="bg-blue-600/20 text-blue-400 text-xs px-2 py-0.5 rounded-full font-semibold whitespace-nowrap">
-                          ✓ Verified
-                        </span>
-                      </div>
-                      <p className="text-slate-400 text-sm capitalize">{provider.accountType}</p>
-                    </div>
-                  </div>
-
-                  {/* Provider Details */}
-                  <div className="space-y-3 mb-5">
-                    <div className="flex flex-wrap gap-2">
-                      {provider.skills?.map((skill, idx) => (
-                        <span key={idx} className="bg-slate-700 text-blue-400 text-xs px-3 py-1 rounded-full font-medium">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-2 text-slate-300">
-                      <span>📍</span>
-                      <span className="text-sm">{location}</span>
-                    </div>
-
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-bold text-green-400">R{provider.hourlyRate || '--'}</span>
-                      <span className="text-slate-400 text-sm">/hour</span>
-                    </div>
-
-                    {provider.bio && (
-                      <p className="text-slate-400 text-sm line-clamp-2">{provider.bio}</p>
-                    )}
-                  </div>
-
-                  {/* Contact Actions */}
-                  {userData?.accountType === 'client' && provider.phone? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <a
-                        href={`https://wa.me/${formatPhoneForWhatsApp(provider.phone)}?text=${whatsappMessage}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 active:scale-95 px-4 py-3 rounded-xl font-semibold transition"
-                      >
-                        <span>💬</span>
-                        <span>WhatsApp</span>
-                      </a>
-                      <a
-                        href={`tel:${provider.phone}`}
-                        className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 active:scale-95 px-4 py-3 rounded-xl font-semibold transition"
-                      >
-                        <span>📞</span>
-                        <span>Call</span>
-                      </a>
-                    </div>
-                  ) : userData?.accountType!== 'client'? (
-                    <div className="bg-slate-900/50 border-slate-700 rounded-xl p-3 text-center">
-                      <p className="text-slate-500 text-sm">Sign up as a Client to contact providers</p>
-                    </div>
-                  ) : (
-                    <div className="bg-slate-900/50 border-slate-700 rounded-xl p-3 text-center">
-                      <p className="text-slate-500 text-sm">Phone number not available</p>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-20">
+            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 font-medium">Finding providers for you...</p>
           </div>
         )}
+
+        {/* Empty State */}
+        {!loading && filteredProviders.length === 0 && (
+          <div className="bg-white border-gray-200 rounded-3xl shadow-xl p-12 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No providers found</h3>
+            <p className="text-gray-600">Try selecting a different skill or check back later</p>
+          </div>
+        )}
+
+        {/* Provider Cards Grid */}
+        {!loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProviders.map(provider => (
+              <div key={provider.id} className="bg-white border-gray-200 rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition transform hover:-translate-y-1">
+                
+                {/* Card Header */}
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-md">
+                        <span className="text-white font-bold text-lg">
+                          {provider.name?.[0]?.toUpperCase() || 'P'}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900">{provider.name} {provider.surname}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-lg text-xs font-semibold border-green-200">
+                            ✓ Verified
+                          </span>
+                          <span className="text-xs text-gray-600 capitalize bg-white px-2.5 py-1 rounded-lg">
+                            {provider.accountType}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Body */}
+                <div className="p-6">
+                  {/* Skills */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {provider.skills?.map(skill => (
+                      <span key={skill} className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-xl text-sm font-medium">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Location */}
+                  <div className="flex items-center gap-2 text-gray-700 mb-3">
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="text-sm font-medium">{provider.location || 'South Africa'}</span>
+                  </div>
+
+                  {/* Rate */}
+                  <div className="flex items-baseline gap-2 mb-4">
+                    <span className="text-2xl font-bold text-gray-900">
+                      R{provider.hourlyRate || '--'}
+                    </span>
+                    <span className="text-gray-600 text-sm">/hour</span>
+                  </div>
+
+                  {/* About */}
+                  {provider.about && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {provider.about}
+                    </p>
+                  )}
+
+                  {/* CTA for Non-Clients */}
+                  {!isClient && (
+                    <div className="bg-amber-50 border-amber-200 rounded-2xl p-4 text-center">
+                      <p className="text-amber-800 text-sm font-medium mb-3">
+                        Sign up as a Client to contact providers
+                      </p>
+                      <Link
+                        to="/signup"
+                        className="inline-block bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-lg shadow-amber-600/30 transition transform hover:scale-[1.02]"
+                      >
+                        Create Client Account
+                      </Link>
+                    </div>
+                  )}
+
+                  {/* Contact Button for Clients */}
+                  {isClient && provider.phone && (
+                    <a
+                      href={`https://wa.me/${provider.phone.replace(/\s+/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-5 py-3.5 rounded-xl font-semibold shadow-lg shadow-green-600/30 transition transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.151-.172.2-.298.3-.495.099-.198.05-.372-.025-.52-.075-.148-.67-1.611-.916-2.206-.242-.579-.487-.5-.67-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.096 3.2 5.077 4.487.709.306 1.003.49 1.345.62.564.18 1.08.154 1.486.094.453-.067 1.385-.566 1.58-1.114.195-.548.195-1.019.136-1.117-.059-.099-.216-.159-.453-.308z"/>
+                      </svg>
+                      Contact on WhatsApp
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
     </div>
   )
 }
-
-export default Browse
