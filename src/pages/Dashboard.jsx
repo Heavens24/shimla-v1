@@ -35,8 +35,7 @@ export default function Dashboard() {
 
   if (loading) return <div className="p-8">Loading...</div>
   
-  // If no userData AND not admin → redirect handled in useEffect
-  // If admin with no userData → show minimal admin dashboard
+  // Admin with no userData → show minimal admin dashboard
   if (!userData) {
     const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
     if (isAdmin) {
@@ -73,7 +72,40 @@ export default function Dashboard() {
   const isVerified = userData.verified === true
   const isIndividual = userData.accountType === 'individual'
   const isBusiness = userData.accountType === 'business'
+  const isClient = userData.accountType === 'client'
   const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+
+  // VERIFICATION GATE: Workers/Businesses must be verified before seeing dashboard
+  if ((isIndividual || isBusiness) && !isVerified) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-slate-800 border-slate-700 rounded-2xl p-8 text-center">
+          <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold mb-3">Profile Under Review</h2>
+          <p className="text-slate-400 mb-6">
+            Your provider profile is being reviewed by our admin team. This usually takes 24 hours.
+          </p>
+          <div className="bg-slate-900 border-slate-700 rounded-lg p-4 mb-6">
+            <p className="text-sm text-slate-400 mb-2">Your Firebase UID</p>
+            <p className="font-mono text-sm text-white break-all">{currentUser?.uid}</p>
+          </div>
+          <p className="text-slate-500 text-sm mb-6">
+            Send this UID to the admin on WhatsApp after you complete the R10 payment.
+          </p>
+          <button 
+            onClick={handleLogout}
+            className="w-full bg-slate-700 hover:bg-slate-600 py-3 rounded-lg font-semibold transition"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
