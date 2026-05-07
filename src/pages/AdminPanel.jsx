@@ -2,23 +2,38 @@ import { useState, useEffect } from 'react'
 import { collection, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [bulkLoading, setBulkLoading] = useState(false)
   const [filter, setFilter] = useState('all')
+  const { currentUser } = useAuth()
   const navigate = useNavigate()
 
+  // Admin check using currentUser.email - more reliable than userData
+  const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+
   useEffect(() => {
+    if (!isAdmin) {
+      navigate('/') // Redirect non-admins to dashboard
+      return
+    }
     fetchUsers()
-  }, [])
+  }, [isAdmin, navigate])
 
   const fetchUsers = async () => {
     setLoading(true)
-    const snapshot = await getDocs(collection(db, 'users'))
-    setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
-    setLoading(false)
+    try {
+      const snapshot = await getDocs(collection(db, 'users'))
+      setUsers(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+    } catch (error) {
+      console.error('Error fetching users:', error)
+      alert('Failed to load users: ' + error.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const toggleVerify = async (userId, currentStatus) => {
@@ -87,11 +102,15 @@ export default function AdminPanel() {
   const verifiedUsers = users.filter(u => u.verified === true)
   const pendingUsers = users.filter(u => !user.verified && user.profileComplete)
 
-  if (loading) return <div className="p-8">Loading...</div>
+  if (!isAdmin) {
+    return <div className="p-8">Redirecting...</div>
+  }
+
+  if (loading) return <div className="p-8">Loading admin panel...</div>
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      {/* Header with Back Button - Using Link instead of navigate for reliability */}
+      {/* Header with Back Button */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Shimla Admin Panel</h1>
