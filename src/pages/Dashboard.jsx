@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
-import { doc, updateDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { signOut } from 'firebase/auth'
+import { auth } from '../firebase'
 
 export default function Dashboard() {
   const { currentUser, userData, loading } = useAuth()
@@ -26,6 +26,11 @@ export default function Dashboard() {
     }
   }
 
+  const handleLogout = async () => {
+    await signOut(auth)
+    navigate('/login')
+  }
+
   if (loading) return <div className="p-8">Loading...</div>
   if (!userData) return null
 
@@ -37,7 +42,7 @@ export default function Dashboard() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      {/* Header with Admin Back Button */}
+      {/* Header with Admin Back Button + Logout */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="flex gap-3">
@@ -55,6 +60,12 @@ export default function Dashboard() {
           >
             Browse Providers
           </Link>
+          <button 
+            onClick={handleLogout}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+          >
+            Logout
+          </button>
         </div>
       </div>
 
