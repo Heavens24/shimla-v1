@@ -4,10 +4,10 @@ import { createUserWithEmailAndPassword } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 
-function Signup() {
+export default function Signup() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [accountType, setAccountType] = useState('individual') // 'individual' = worker, 'client' = customer
+  const [accountType, setAccountType] = useState('individual')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -15,126 +15,127 @@ function Signup() {
   async function handleSubmit(e) {
     e.preventDefault()
     
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters')
-      return
-    }
-
     try {
       setError('')
       setLoading(true)
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       
-      // Create Firebase Auth user
-      const { user } = await createUserWithEmailAndPassword(auth, email, password)
-      
-      // Create Firestore user document
-      await setDoc(doc(db, 'users', user.uid), {
-        email: user.email,
-        accountType: accountType, // 'individual', 'business', or 'client'
-        createdAt: new Date(),
+      // Create user document in Firestore
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email: email,
+        accountType: accountType,
         verified: false,
         paid: false,
-        profileComplete: accountType === 'client' // clients skip onboarding
+        createdAt: new Date().toISOString()
       })
       
-      // Route based on account type
-      if (accountType === 'client') {
-        navigate('/') // Clients go straight to dashboard
-      } else {
-        navigate('/onboarding') // Workers/Businesses complete profile first
-      }
+      navigate('/onboarding')
     } catch (err) {
-      setError('Failed to create account: ' + err.message)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-sm">
+        {/* Logo + Brand */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Create Shimla Account</h1>
-          <p className="text-slate-400">Join South Africa’s trusted service platform</p>
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-lg mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Shimla Account</h1>
+          <p className="text-gray-600">Join South Africa’s trusted service platform</p>
         </div>
 
-        {/* Account Type Toggle */}
-        <div className="flex gap-3 mb-6 bg-slate-800 p-1.5 rounded-xl">
-          <button
-            type="button"
-            onClick={() => setAccountType('individual')}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold transition ${
-              accountType === 'individual'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                : 'bg-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            I'm a Worker
-          </button>
-          <button
-            type="button"
-            onClick={() => setAccountType('client')}
-            className={`flex-1 py-3 px-4 rounded-lg font-semibold transition ${
-              accountType === 'client'
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                : 'bg-transparent text-slate-400 hover:text-white'
-            }`}
-          >
-            I Need Work Done
-          </button>
-        </div>
-
-        {/* Signup Form */}
-        <form onSubmit={handleSubmit} className="bg-slate-800 border-slate-700 rounded-2xl p-6 space-y-5">
+        {/* Signup Card */}
+        <div className="bg-white border-gray-200 rounded-3xl shadow-xl p-8">
           {error && (
-            <div className="bg-red-600/20 border-red-600 text-red-400 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-5">
               {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-semibold mb-2">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full p-3.5 bg-slate-900 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-blue-600 focus:outline-none transition"
-              placeholder="you@example.com"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Account Type Selector */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">I am a</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAccountType('individual')}
+                  className={`px-4 py-3.5 rounded-2xl border-2 font-semibold transition transform hover:scale-[1.02] ${
+                    accountType === 'individual'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md shadow-blue-600/20'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-sm">I'm a Worker</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountType('client')}
+                  className={`px-4 py-3.5 rounded-2xl border-2 font-semibold transition transform hover:scale-[1.02] ${
+                    accountType === 'client'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md shadow-blue-600/20'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-sm">I Need Work Done</div>
+                </button>
+              </div>
+            </div>
 
-          <div>
-            <label className="block text-sm font-semibold mb-2">Password - min 6 characters</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength="6"
-              className="w-full p-3.5 bg-slate-900 border-slate-600 rounded-xl text-white placeholder-slate-500 focus:border-blue-600 focus:outline-none transition"
-              placeholder="••••"
-            />
-          </div>
+            {/* Email Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                placeholder="you@example.com"
+              />
+            </div>
 
-          <button
-            disabled={loading}
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3.5 rounded-xl font-bold transition"
-          >
-            {loading ? 'Creating Account...' : 'Sign Up'}
-          </button>
+            {/* Password Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Password - min 6 characters</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength="6"
+                className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                placeholder="••••"
+              />
+            </div>
 
-          <p className="text-center text-slate-400 text-sm">
+            {/* Submit Button */}
+            <button
+              disabled={loading}
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3.5 rounded-xl font-semibold text-white shadow-lg shadow-blue-600/30 transition transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              {loading ? 'Creating Account...' : 'Sign Up'}
+            </button>
+          </form>
+
+          {/* Login Link */}
+          <p className="text-center text-gray-600 text-sm mt-6">
             Already have an account?{' '}
-            <Link to="/login" className="text-blue-400 hover:text-blue-300 font-semibold">
+            <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
               Log in
             </Link>
           </p>
-        </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-slate-500 text-xs">
+          {/* Terms */}
+          <p className="text-center text-gray-500 text-xs mt-6">
             By signing up you agree to Shimla’s Terms of Service
           </p>
         </div>
@@ -142,5 +143,3 @@ function Signup() {
     </div>
   )
 }
-
-export default Signup
