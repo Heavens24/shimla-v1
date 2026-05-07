@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { doc, setDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, storage } from '../firebase'
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 
 const SKILLS = [
   'Electrician', 'Welder', 'Mechanic', 'Plumber', 'House Call Barber',
@@ -21,8 +22,11 @@ export default function Onboarding() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [aboutLength, setAboutLength] = useState(0)
+  const [idFile, setIdFile] = useState(null)
+  const [idPreview, setIdPreview] = useState(null)
 
   const [formData, setFormData] = useState({
+    accountType: userData?.accountType || 'individual',
     name: '',
     surname: '',
     phone: '',
@@ -36,16 +40,16 @@ export default function Onboarding() {
   })
 
   useEffect(() => {
-    if (userData) {
+    if (userData && userData.name && userData.surname) {
       navigate('/')
     }
   }, [userData, navigate])
 
   const handleSkillToggle = (skill) => {
     setFormData(prev => ({
-      ...prev,
+     ...prev,
       skills: prev.skills.includes(skill)
-        ? prev.skills.filter(s => s !== skill)
+       ? prev.skills.filter(s => s!== skill)
         : [...prev.skills, skill]
     }))
   }
@@ -53,8 +57,16 @@ export default function Onboarding() {
   const handleAboutChange = (e) => {
     const text = e.target.value
     if (text.length <= 200) {
-      setFormData(prev => ({ ...prev, about: text }))
+      setFormData(prev => ({...prev, about: text }))
       setAboutLength(text.length)
+    }
+  }
+
+  const handleIdFileChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setIdFile(file)
+      setIdPreview(URL.createObjectURL(file))
     }
   }
 
@@ -64,21 +76,30 @@ export default function Onboarding() {
     setError('')
 
     try {
-      const isBusiness = userData?.accountType === 'business'
-      
+      let idDocumentURL = ''
+
+      // Upload ID document to Firebase Storage
+      if (idFile) {
+        const storageRef = ref(storage, `idDocuments/${currentUser.uid}`)
+        await uploadBytes(storageRef, idFile)
+        idDocumentURL = await getDownloadURL(storageRef)
+      }
+
+      const isBusiness = formData.accountType === 'business'
+
       const userProfile = {
-        ...formData,
+       ...formData,
         email: currentUser.email,
-        accountType: userData?.accountType || 'individual',
         verified: false,
         paid: false,
+        idDocumentURL: idDocumentURL,
         createdAt: new Date().toISOString()
       }
 
       // Clean up business fields if not business
       if (!isBusiness) {
         delete userProfile.businessName
-        delete userProfile.businessRegNumber  
+        delete userProfile.businessRegNumber
         delete userProfile.businessType
       }
 
@@ -92,17 +113,17 @@ export default function Onboarding() {
     }
   }
 
-  if (!currentUser || !userData) {
+  if (!currentUser) {
     return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">Loading...</div>
   }
 
-  const isBusiness = userData.accountType === 'business'
+  const isBusiness = formData.accountType === 'business'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        
-        {/* Header Card */}
+
+        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-lg mb-4">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,12 +131,10 @@ export default function Onboarding() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Complete Your {isBusiness ? 'Business' : 'Provider'} Profile
+            Complete Your {isBusiness? 'Business' : 'Provider'} Profile
           </h1>
           <p className="text-gray-600">
-            {isBusiness 
-              ? 'Complete your business profile to get verified on Shimla'
-              : 'Complete your profile to get listed as a verified individual'}
+            Help us keep Shimla safe and trusted for all clients
           </p>
         </div>
 
@@ -128,9 +147,40 @@ export default function Onboarding() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Personal Information */}
+
+            {/* Account Type Selector */}
             <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Account Type</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, accountType: 'individual'})}
+                  className={`px-4 py-4 rounded-2xl border-2 font-semibold transition transform hover:scale-[1.02] ${
+                    formData.accountType === 'individual'
+                     ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md shadow-blue-600/20'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-sm font-bold mb-1">Individual</div>
+                  <div className="text-xs">Freelancer or independent worker</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData({...formData, accountType: 'business'})}
+                  className={`px-4 py-4 rounded-2xl border-2 font-semibold transition transform hover:scale-[1.02] ${
+                    formData.accountType === 'business'
+                     ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md shadow-blue-600/20'
+                      : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="text-sm font-bold mb-1">Business</div>
+                  <div className="text-xs">Registered company or business</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Personal Information */}
+            <div className="border-t border-gray-200 pt-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -176,7 +226,7 @@ export default function Onboarding() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Business Registration Number</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">CIPC Registration Number</label>
                       <input
                         type="text"
                         required
@@ -206,8 +256,34 @@ export default function Onboarding() {
               </div>
             )}
 
+            {/* ID Document Upload - Safety Feature */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Identity Verification</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Upload your {isBusiness? 'CIPC registration document' : 'RSA ID or Passport'} to verify your identity.
+                This keeps Shimla safe for clients.
+              </p>
+              <div className="bg-blue-50 border-blue-200 rounded-2xl p-5">
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  onChange={handleIdFileChange}
+                  className="w-full text-sm text-gray-700 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700 file:cursor-pointer"
+                />
+                {idPreview && (
+                  <div className="mt-4">
+                    <p className="text-sm text-green-700 font-medium mb-2">✓ Document uploaded</p>
+                    <img src={idPreview} alt="ID Preview" className="w-full max-w-xs rounded-xl border border-gray-200" />
+                  </div>
+                )}
+                <p className="text-xs text-gray-600 mt-3">
+                  Your document is encrypted and only visible to Shimla admins for verification
+                </p>
+              </div>
+            </div>
+
             {/* Skills/Services - Only for Individual/Business */}
-            {(userData.accountType === 'individual' || isBusiness) && (
+            {(formData.accountType === 'individual' || isBusiness) && (
               <div className="border-t border-gray-200 pt-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Skills/Services</h3>
                 <p className="text-sm text-gray-600 mb-4">Select all that apply. Clients will filter by this.</p>
@@ -219,7 +295,7 @@ export default function Onboarding() {
                       onClick={() => handleSkillToggle(skill)}
                       className={`px-4 py-3 rounded-2xl border-2 text-sm font-medium transition transform hover:scale-[1.02] ${
                         formData.skills.includes(skill)
-                          ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md shadow-blue-600/20'
+                         ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md shadow-blue-600/20'
                           : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
                       }`}
                     >
@@ -247,7 +323,6 @@ export default function Onboarding() {
                       <option key={city} value={city}>{city}</option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-2">This helps clients find you nearby</p>
                 </div>
 
                 <div>
@@ -260,7 +335,6 @@ export default function Onboarding() {
                     className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
                     placeholder="078 060 8202"
                   />
-                  <p className="text-xs text-gray-500 mt-2">Clients will contact you on this number</p>
                 </div>
 
                 <div>
@@ -272,7 +346,6 @@ export default function Onboarding() {
                     className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
                     placeholder="150"
                   />
-                  <p className="text-xs text-gray-500 mt-2">You can discuss final price on WhatsApp</p>
                 </div>
               </div>
             </div>
@@ -295,10 +368,10 @@ export default function Onboarding() {
             <div className="border-t border-gray-200 pt-6">
               <button
                 type="submit"
-                disabled={loading || formData.skills.length === 0}
+                disabled={loading || formData.skills.length === 0 ||!idFile}
                 className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3.5 rounded-xl font-semibold text-white shadow-lg shadow-blue-600/30 transition transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                {loading ? 'Submitting...' : 'Submit for Verification'}
+                {loading? 'Submitting...' : 'Submit for Verification'}
               </button>
               <p className="text-center text-gray-500 text-sm mt-3">
                 Your profile will be reviewed within 24 hours before going live on Shimla
