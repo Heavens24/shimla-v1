@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore'
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([])
@@ -85,24 +85,24 @@ export default function AdminPanel() {
 
   const paidUsers = users.filter(u => u.paid === true)
   const verifiedUsers = users.filter(u => u.verified === true)
-  const pendingUsers = users.filter(u => !u.verified && u.profileComplete)
+  const pendingUsers = users.filter(u => !user.verified && user.profileComplete)
 
   if (loading) return <div className="p-8">Loading...</div>
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      {/* Header with Back Button */}
+      {/* Header with Back Button - Using Link instead of navigate for reliability */}
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold">Shimla Admin Panel</h1>
           <p className="text-gray-600">Manage providers, verification, and payments</p>
         </div>
-        <button
-          onClick={() => navigate('/')}
-          className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300"
+        <Link 
+          to="/"
+          className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 inline-block"
         >
           ← Back to Dashboard
-        </button>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -125,7 +125,7 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* Bulk Action - Only shows if there are paid users */}
+      {/* Bulk Action */}
       {paidUsers.length > 0 && (
         <div className="bg-red-50 border-red-200 p-4 rounded-lg mb-6">
           <div className="flex justify-between items-center">
