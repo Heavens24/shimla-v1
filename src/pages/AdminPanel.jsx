@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
 import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
+import { useNavigate } from 'react-router-dom'
 
 export default function AdminPanel() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const navigate = useNavigate()
 
   useEffect(() => {
     fetchUsers()
@@ -72,6 +75,14 @@ export default function AdminPanel() {
     }
   }
 
+  const filteredUsers = users.filter(user => {
+    if (filter === 'pending') return !user.verified && user.profileComplete
+    if (filter === 'verified') return user.verified && !user.paid
+    if (filter === 'paid') return user.paid === true
+    if (filter === 'unpaid') return !user.paid
+    return true
+  })
+
   const paidUsers = users.filter(u => u.paid === true)
   const verifiedUsers = users.filter(u => u.verified === true)
   const pendingUsers = users.filter(u => !u.verified && u.profileComplete)
@@ -80,12 +91,24 @@ export default function AdminPanel() {
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Admin Panel</h1>
-      
+      {/* Header with Back Button */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Shimla Admin Panel</h1>
+          <p className="text-gray-600">Manage providers, verification, and payments</p>
+        </div>
+        <button
+          onClick={() => navigate('/')}
+          className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300"
+        >
+          ← Back to Dashboard
+        </button>
+      </div>
+
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="bg-blue-50 p-4 rounded-lg">
-          <p className="text-gray-600 text-sm">Total Users</p>
+          <p className="text-gray-600 text-sm">Total Providers</p>
           <p className="text-2xl font-bold">{users.length}</p>
         </div>
         <div className="bg-green-50 p-4 rounded-lg">
@@ -93,8 +116,12 @@ export default function AdminPanel() {
           <p className="text-2xl font-bold">{verifiedUsers.length}</p>
         </div>
         <div className="bg-yellow-50 p-4 rounded-lg">
-          <p className="text-gray-600 text-sm">Paid Active</p>
+          <p className="text-gray-600 text-sm">Paid</p>
           <p className="text-2xl font-bold">{paidUsers.length}</p>
+        </div>
+        <div className="bg-orange-50 p-4 rounded-lg">
+          <p className="text-gray-600 text-sm">Pending Review</p>
+          <p className="text-2xl font-bold">{pendingUsers.length}</p>
         </div>
       </div>
 
@@ -117,88 +144,116 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {/* Pending Verification */}
-      {pendingUsers.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Pending Verification ({pendingUsers.length})</h2>
-          <div className="space-y-3">
-            {pendingUsers.map(user => (
-              <div key={user.id} className="border p-4 rounded-lg flex justify-between items-center">
-                <div>
-                  <p className="font-semibold">{user.name} {user.surname}</p>
-                  <p className="text-sm text-gray-600">{user.email} • {user.accountType}</p>
-                  <p className="text-sm text-gray-600">Skills: {user.skills?.join(', ')}</p>
-                </div>
-                <button
-                  onClick={() => toggleVerify(user.id, false)}
-                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-                >
-                  Verify
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Filter Tabs */}
+      <div className="flex gap-2 mb-4">
+        {['all', 'pending', 'verified', 'paid', 'unpaid'].map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`px-4 py-2 rounded-lg capitalize ${filter === f ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
 
-      {/* All Users */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">All Users</h2>
-        <div className="space-y-3">
-          {users.map(user => (
-            <div key={user.id} className="border p-4 rounded-lg">
-              <div className="flex justify-between items-start mb-2">
-                <div>
+      {/* Users Table */}
+      <div className="bg-white border rounded-lg overflow-hidden">
+        <table className="w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-4 py-3 text-left">Provider</th>
+              <th className="px-4 py-3 text-left">Type</th>
+              <th className="px-4 py-3 text-left">Location</th>
+              <th className="px-4 py-3 text-left">Status</th>
+              <th className="px-4 py-3 text-left">Payment</th>
+              <th className="px-4 py-3 text-left">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredUsers.map(user => (
+              <tr key={user.id} className="border-t">
+                <td className="px-4 py-3">
                   <p className="font-semibold">{user.name} {user.surname}</p>
-                  <p className="text-sm text-gray-600">{user.email} • {user.accountType}</p>
-                  <p className="text-sm text-gray-600">UID: {user.id}</p>
-                </div>
-                <div className="flex gap-2">
+                  <p className="text-sm text-gray-600">{user.email}</p>
+                  <p className="text-xs text-gray-500">{user.id.substring(0, 8)}...</p>
+                </td>
+                <td className="px-4 py-3 capitalize">{user.accountType || 'N/A'}</td>
+                <td className="px-4 py-3">{user.location || 'N/A'}</td>
+                <td className="px-4 py-3">
                   <span className={`px-3 py-1 rounded-full text-sm ${user.verified ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                    {user.verified ? 'Verified' : 'Not Verified'}
+                    {user.verified ? 'Verified' : 'Pending'}
                   </span>
-                  <span className={`px-3 py-1 rounded-full text-sm ${user.paid ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                    {user.paid ? 'Paid' : 'Unpaid'}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Payment Controls */}
-              <div className="mt-3 flex gap-2">
-                <button
-                  onClick={() => toggleVerify(user.id, user.verified)}
-                  className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700"
-                >
-                  {user.verified ? 'Revoke Verify' : 'Verify'}
-                </button>
-                
-                {user.paid ? (
-                  <button
-                    onClick={() => revokePayment(user.id)}
-                    className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                  >
-                    Revoke Payment
-                  </button>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Paystack reference"
-                      id={`ref-${user.id}`}
-                      className="border px-2 py-1 rounded text-sm"
-                    />
-                    <button
-                      onClick={() => markPaid(user.id, document.getElementById(`ref-${user.id}`).value)}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                    >
-                      Mark Paid
-                    </button>
+                </td>
+                <td className="px-4 py-3">
+                  {user.paid ? (
+                    <div>
+                      <span className="px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">Paid</span>
+                      <p className="text-xs text-gray-500 mt-1">Until 30 Jul</p>
+                    </div>
+                  ) : (
+                    <span className="px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-800">Unpaid</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-2 flex-wrap">
+                    {!user.verified && user.profileComplete && (
+                      <button
+                        onClick={() => toggleVerify(user.id, false)}
+                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                      >
+                        Verify
+                      </button>
+                    )}
+                    {user.verified && (
+                      <button
+                        onClick={() => toggleVerify(user.id, true)}
+                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                      >
+                        Revoke
+                      </button>
+                    )}
+                    {user.paid ? (
+                      <button
+                        onClick={() => revokePayment(user.id)}
+                        className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+                      >
+                        Mark Unpaid
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Paystack ref"
+                          id={`ref-${user.id}`}
+                          className="border px-2 py-1 rounded text-sm w-28"
+                        />
+                        <button
+                          onClick={() => markPaid(user.id, document.getElementById(`ref-${user.id}`).value)}
+                          className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                        >
+                          Mark Paid
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Beta Payment Workflow */}
+      <div className="mt-8 bg-blue-50 p-4 rounded-lg">
+        <h3 className="font-semibold mb-2">Beta Payment Workflow</h3>
+        <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+          <li>Provider pays R10 via Paystack and sends you receipt + Firebase UID on WhatsApp</li>
+          <li>Find provider in this table using their email or UID</li>
+          <li>Click “Mark Paid” button</li>
+          <li>Provider’s dashboard updates instantly - green badge shows, R10 banner disappears</li>
+          <li>Payment is valid until 30 July 2026</li>
+        </ol>
       </div>
     </div>
   )
