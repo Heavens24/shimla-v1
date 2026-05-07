@@ -11,9 +11,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
-    // Only redirect to onboarding if NOT admin and no userData
+    
+    // If not admin and no userData → go to onboarding
     if (!loading && !userData && !isAdmin) {
       navigate('/onboarding')
+      return
+    }
+
+    // If userData exists but profile is incomplete → go to onboarding
+    if (!loading && userData && !isAdmin) {
+      const isIncomplete = !userData.name || !userData.surname || !userData.location
+      if (isIncomplete) {
+        navigate('/onboarding')
+        return
+      }
     }
   }, [loading, userData, currentUser, navigate])
 
@@ -42,7 +53,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
         <div className="max-w-4xl mx-auto px-4 py-12">
-          {/* Header Card */}
           <div className="bg-white border-gray-200 rounded-3xl shadow-xl p-8 mb-8">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-4">
@@ -73,7 +83,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Welcome Card */}
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 rounded-3xl shadow-lg p-8">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center shadow-md">
@@ -101,16 +110,14 @@ export default function Dashboard() {
   const isBusiness = userData.accountType === 'business'
   const isClient = userData.accountType === 'client'
 
-  // VERIFICATION GATE - Premium Caring Design
-  if ((isIndividual || isBusiness) && !isVerified) {
+  // VERIFICATION GATE - Only show if profile is COMPLETE but not verified
+  const isProfileComplete = userData.name && userData.surname && userData.location && userData.skills?.length > 0
+  if ((isIndividual || isBusiness) && isProfileComplete && !isVerified) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
         <div className="max-w-md w-full">
-          
-          {/* Main Card */}
           <div className="bg-white border-gray-200 rounded-3xl shadow-2xl p-8 text-center">
             
-            {/* Icon + Animation */}
             <div className="relative mb-6">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full flex items-center justify-center mx-auto shadow-lg">
                 <svg className="w-10 h-10 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -120,14 +127,12 @@ export default function Dashboard() {
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-500 rounded-full border-4 border-white shadow-md"></div>
             </div>
 
-            {/* Title + Message */}
             <h2 className="text-2xl font-bold text-gray-900 mb-3">Profile Under Review</h2>
             <p className="text-gray-600 mb-6 leading-relaxed">
               Thank you for joining Shimla! Our team is carefully reviewing your provider profile to ensure quality and safety for our community. 
               <span className="font-semibold text-gray-900"> This usually takes 24 hours.</span>
             </p>
 
-            {/* UID Card */}
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 rounded-2xl p-5 mb-6 text-left">
               <div className="flex items-center gap-2 mb-2">
                 <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,7 +154,6 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {/* What Happens Next */}
             <div className="bg-gray-50 border-gray-200 rounded-2xl p-4 mb-6 text-left">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">What happens next?</h3>
               <div className="space-y-2">
@@ -174,7 +178,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Support Message */}
             <div className="bg-green-50 border-green-200 rounded-2xl p-4 mb-6">
               <p className="text-sm text-green-800 font-medium">
                 💙 We’re here to help you succeed on Shimla
@@ -184,7 +187,6 @@ export default function Dashboard() {
               </p>
             </div>
 
-            {/* Logout Button */}
             <button 
               onClick={handleLogout}
               className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold transition"
@@ -193,7 +195,6 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Footer */}
           <p className="text-center text-gray-500 text-xs mt-6">
             Shimla • South Africa’s trusted service platform
           </p>
@@ -207,7 +208,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
         <div className="max-w-5xl mx-auto px-4 py-12">
-          {/* Header */}
           <div className="flex justify-between items-center mb-10">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {userData.name || 'Client'}</h1>
@@ -221,7 +221,6 @@ export default function Dashboard() {
             </button>
           </div>
 
-          {/* Main Action Card */}
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 rounded-3xl shadow-xl p-8 mb-8">
             <div className="flex items-start gap-4">
               <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-4 rounded-2xl shadow-lg">
@@ -242,7 +241,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Profile Info Card */}
           <div className="bg-white border-gray-200 rounded-3xl shadow-lg p-8 mb-8">
             <h3 className="text-lg font-semibold text-gray-900 mb-5">Your Profile</h3>
             <div className="grid grid-cols-2 gap-6 text-gray-700">
@@ -265,7 +263,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* How It Works */}
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-white border-gray-200 rounded-2xl shadow-md p-6 text-center">
               <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
@@ -298,7 +295,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-4xl mx-auto px-4 py-12">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <div className="flex gap-3">
@@ -317,7 +313,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Payment Status Banner - Only for Individual/Business providers */}
         {(isIndividual || isBusiness) && !isPaid && (
           <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border-yellow-300 rounded-2xl shadow-md p-5 mb-6">
             <div className="flex justify-between items-center">
@@ -337,7 +332,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Profile Card */}
         <div className="bg-white border-gray-200 rounded-3xl shadow-xl p-8 mb-6">
           <div className="flex justify-between items-start mb-5">
             <div>
@@ -371,7 +365,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Firebase UID Card - Only for providers */}
         {(isIndividual || isBusiness) && (
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 rounded-3xl shadow-lg p-6">
             <p className="font-semibold text-blue-900 mb-2">Your Firebase UID</p>
