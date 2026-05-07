@@ -46,7 +46,7 @@ export default function AdminPanel() {
       await updateDoc(doc(db, 'users', userId), {
         verified: !currentStatus
       })
-      fetchUsers() // Refresh list
+      fetchUsers()
     } catch (error) {
       console.error('Error updating verification:', error)
       alert('Failed to update verification status')
@@ -58,7 +58,7 @@ export default function AdminPanel() {
       await updateDoc(doc(db, 'users', userId), {
         paid: !currentStatus
       })
-      fetchUsers() // Refresh list
+      fetchUsers()
     } catch (error) {
       console.error('Error updating payment status:', error)
       alert('Failed to update payment status')
@@ -81,7 +81,7 @@ export default function AdminPanel() {
       }
       
       alert(`Successfully revoked payment for ${providerUsers.length} providers`)
-      fetchUsers() // Refresh list
+      fetchUsers()
     } catch (error) {
       console.error('Error in bulk revoke:', error)
       alert('Failed to bulk revoke payments')
@@ -206,6 +206,7 @@ export default function AdminPanel() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Provider</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Type</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Location</th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">ID Document</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Verified</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Paid</th>
                   <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">Skills</th>
@@ -225,6 +226,27 @@ export default function AdminPanel() {
                       <span className="capitalize text-sm font-medium text-gray-700 bg-gray-100 px-3 py-1.5 rounded-lg">{u.accountType}</span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">{u.location || '-'}</td>
+                    
+                    {/* ID Document Column */}
+                    <td className="px-6 py-4">
+                      {u.idDocumentURL ? (
+                        <a 
+                          href={u.idDocumentURL} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold text-sm underline"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                          View ID
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 text-sm">Not uploaded</span>
+                      )}
+                    </td>
+                    
                     <td className="px-6 py-4">
                       <button
                         onClick={() => toggleVerified(u.id, u.verified)}
@@ -258,7 +280,7 @@ export default function AdminPanel() {
                 ))}
                 {providers.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
                       No providers yet
                     </td>
                   </tr>
