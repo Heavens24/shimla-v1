@@ -1,239 +1,313 @@
-import { useState } from 'react'
-import { useAuth } from '../context/AuthContext'
-import { doc, updateDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { doc, setDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 
 const SKILLS = [
-  'Electrician', 'Welder', 'Mechanic', 'Plumber',
-  'House Call Barber', 'Nail Technician', 'Painter',
-  'Carpenter', 'Gardener', 'Cleaner', 'Tutor', 'Other'
+  'Electrician', 'Welder', 'Mechanic', 'Plumber', 'House Call Barber',
+  'Nail Technician', 'Painter', 'Carpenter', 'Gardener', 'Cleaner', 'Tutor', 'Other'
 ]
 
 const SA_CITIES = [
-  'Bloemfontein', 'Johannesburg', 'Pretoria', 'Cape Town', 'Durban', 
-  'Port Elizabeth', 'East London', 'Kimberley', 'Polokwane', 'Pietermaritzburg',
-  'Other'
+  'Johannesburg', 'Cape Town', 'Durban', 'Pretoria', 'Port Elizabeth',
+  'Bloemfontein', 'East London', 'Polokwane', 'Kimberley', 'Pietermaritzburg',
+  'Nelspruit', 'Rustenburg', 'Vereeniging', 'Soweto', 'Other'
 ]
 
-function Onboarding() {
-  const [selectedSkills, setSelectedSkills] = useState([])
-  const [bio, setBio] = useState('')
-  const [hourlyRate, setHourlyRate] = useState('')
-  const [companyName, setCompanyName] = useState('')
-  const [regNumber, setRegNumber] = useState('')
-  const [phone, setPhone] = useState('')
-  const [location, setLocation] = useState('')
-  const [customLocation, setCustomLocation] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+export default function Onboarding() {
   const { currentUser, userData } = useAuth()
   const navigate = useNavigate()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [aboutLength, setAboutLength] = useState(0)
 
-  const isBusiness = userData?.accountType === 'business'
-  const finalLocation = location === 'Other' ? customLocation : location
+  const [formData, setFormData] = useState({
+    name: '',
+    surname: '',
+    phone: '',
+    location: '',
+    skills: [],
+    hourlyRate: '',
+    about: '',
+    businessName: '',
+    businessRegNumber: '',
+    businessType: ''
+  })
+
+  useEffect(() => {
+    if (userData) {
+      navigate('/')
+    }
+  }, [userData, navigate])
+
+  const handleSkillToggle = (skill) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: prev.skills.includes(skill)
+        ? prev.skills.filter(s => s !== skill)
+        : [...prev.skills, skill]
+    }))
+  }
+
+  const handleAboutChange = (e) => {
+    const text = e.target.value
+    if (text.length <= 200) {
+      setFormData(prev => ({ ...prev, about: text }))
+      setAboutLength(text.length)
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
+    setLoading(true)
     setError('')
 
-    if (selectedSkills.length === 0) {
-      setError('Please select at least one skill')
-      return
-    }
-    if (!phone.trim()) {
-      setError('Phone number is required for clients to contact you')
-      return
-    }
-    if (!finalLocation.trim()) {
-      setError('Please select or enter your city/location')
-      return
-    }
-    if (isBusiness && (!companyName.trim() || !regNumber.trim())) {
-      setError('Company name and CIPC registration number are required for businesses')
-      return
-    }
-
-    setLoading(true)
     try {
-      await updateDoc(doc(db, 'users', currentUser.uid), {
-        skills: selectedSkills,
-        bio,
-        hourlyRate: Number(hourlyRate) || 0,
-        companyName: isBusiness ? companyName : null,
-        regNumber: isBusiness ? regNumber : null,
-        phone,
-        location: finalLocation, // ← Now dynamic, not hardcoded
-        verified: false, // Admin will verify later
-        profileComplete: true,
-        updatedAt: new Date()
-      })
+      const isBusiness = userData?.accountType === 'business'
+      
+      const userProfile = {
+        ...formData,
+        email: currentUser.email,
+        accountType: userData?.accountType || 'individual',
+        verified: false,
+        paid: false,
+        createdAt: new Date().toISOString()
+      }
+
+      // Clean up business fields if not business
+      if (!isBusiness) {
+        delete userProfile.businessName
+        delete userProfile.businessRegNumber  
+        delete userProfile.businessType
+      }
+
+      await setDoc(doc(db, 'users', currentUser.uid), userProfile)
       navigate('/')
     } catch (err) {
-      setError('Failed to save profile: ' + err.message)
+      setError('Failed to create profile. Please try again.')
+      console.error(err)
+    } finally {
       setLoading(false)
     }
   }
 
-  const toggleSkill = (skill) => {
-    setSelectedSkills(prev =>
-      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
-    )
+  if (!currentUser || !userData) {
+    return <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">Loading...</div>
   }
 
+  const isBusiness = userData.accountType === 'business'
+
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-4">
-      <div className="max-w-2xl mx-auto pt-6 pb-10">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Complete Your Provider Profile</h1>
-          <p className="text-slate-400">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+        
+        {/* Header Card */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl shadow-lg mb-4">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Complete Your {isBusiness ? 'Business' : 'Provider'} Profile
+          </h1>
+          <p className="text-gray-600">
             {isBusiness 
-              ? 'Register your business to get listed as a verified service provider' 
+              ? 'Complete your business profile to get verified on Shimla'
               : 'Complete your profile to get listed as a verified individual'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Form Card */}
+        <div className="bg-white border-gray-200 rounded-3xl shadow-xl p-8">
           {error && (
-            <div className="bg-red-600/20 border-red-600 text-red-400 px-4 py-3 rounded-lg text-sm">
+            <div className="bg-red-50 border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-6">
               {error}
             </div>
           )}
 
-          {/* Business Fields */}
-          {isBusiness && (
-            <div className="bg-slate-800 border-slate-700 rounded-2xl p-5 space-y-4">
-              <h3 className="text-lg font-bold mb-2">Business Details</h3>
-              <input
-                type="text"
-                placeholder="Company Name"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                className="w-full px-4 py-3.5 bg-slate-900 border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 transition"
-                required
-              />
-              <input
-                type="text"
-                placeholder="CIPC Registration Number"
-                value={regNumber}
-                onChange={(e) => setRegNumber(e.target.value)}
-                className="w-full px-4 py-3.5 bg-slate-900 border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 transition"
-                required
-              />
-            </div>
-          )}
-
-          {/* Skills Selection */}
-          <div className="bg-slate-800 border-slate-700 rounded-2xl p-5">
-            <label className="block text-lg font-semibold mb-4">Your Skills/Services</label>
-            <p className="text-slate-400 text-sm mb-4">Select all that apply. Clients will filter by this.</p>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {SKILLS.map(skill => (
-                <button
-                  key={skill}
-                  type="button"
-                  onClick={() => toggleSkill(skill)}
-                  className={`p-3 rounded-xl text-sm font-medium transition ${
-                    selectedSkills.includes(skill)
-                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-slate-600'
-                  }`}
-                >
-                  {skill}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Location + Contact + Rate */}
-          <div className="bg-slate-800 border-slate-700 rounded-2xl p-5 space-y-4">
-            <h3 className="text-lg font-bold mb-2">Location & Contact</h3>
+          <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Location */}
+            {/* Personal Information */}
             <div>
-              <label className="block text-sm font-semibold mb-2">City / Location</label>
-              <select
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-4 py-3.5 bg-slate-900 border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 transition text-white"
-                required
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                    placeholder="John"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Surname</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.surname}
+                    onChange={(e) => setFormData({...formData, surname: e.target.value})}
+                    className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                    placeholder="Doe"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Business Information - Only for Business */}
+            {isBusiness && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Information</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Business Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.businessName}
+                      onChange={(e) => setFormData({...formData, businessName: e.target.value})}
+                      className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                      placeholder="ABC Plumbing Services"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Business Registration Number</label>
+                      <input
+                        type="text"
+                        required
+                        value={formData.businessRegNumber}
+                        onChange={(e) => setFormData({...formData, businessRegNumber: e.target.value})}
+                        className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                        placeholder="2020/123456/07"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Business Type</label>
+                      <select
+                        required
+                        value={formData.businessType}
+                        onChange={(e) => setFormData({...formData, businessType: e.target.value})}
+                        className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                      >
+                        <option value="">Select type</option>
+                        <option value="Sole Proprietor">Sole Proprietor</option>
+                        <option value="Partnership">Partnership</option>
+                        <option value="Pty Ltd">Pty Ltd</option>
+                        <option value="Non-Profit">Non-Profit</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Skills/Services - Only for Individual/Business */}
+            {(userData.accountType === 'individual' || isBusiness) && (
+              <div className="border-t border-gray-200 pt-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Your Skills/Services</h3>
+                <p className="text-sm text-gray-600 mb-4">Select all that apply. Clients will filter by this.</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {SKILLS.map(skill => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => handleSkillToggle(skill)}
+                      className={`px-4 py-3 rounded-2xl border-2 text-sm font-medium transition transform hover:scale-[1.02] ${
+                        formData.skills.includes(skill)
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 shadow-md shadow-blue-600/20'
+                          : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Location & Contact */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Location & Contact</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">City / Location</label>
+                  <select
+                    required
+                    value={formData.location}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                  >
+                    <option value="">Select your city</option>
+                    {SA_CITIES.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">This helps clients find you nearby</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone/WhatsApp Number</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                    placeholder="078 060 8202"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">Clients will contact you on this number</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Hourly Rate (ZAR) - Optional</label>
+                  <input
+                    type="number"
+                    value={formData.hourlyRate}
+                    onChange={(e) => setFormData({...formData, hourlyRate: e.target.value})}
+                    className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition"
+                    placeholder="150"
+                  />
+                  <p className="text-xs text-gray-500 mt-2">You can discuss final price on WhatsApp</p>
+                </div>
+              </div>
+            </div>
+
+            {/* About You */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">About You</h3>
+              <textarea
+                value={formData.about}
+                onChange={handleAboutChange}
+                rows="4"
+                maxLength="200"
+                className="w-full px-4 py-3.5 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:bg-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition resize-none"
+                placeholder="Tell clients about your experience, qualifications, areas you service..."
+              />
+              <p className="text-xs text-gray-500 mt-2 text-right">{aboutLength}/200 characters</p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="border-t border-gray-200 pt-6">
+              <button
+                type="submit"
+                disabled={loading || formData.skills.length === 0}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:opacity-50 disabled:cursor-not-allowed px-6 py-3.5 rounded-xl font-semibold text-white shadow-lg shadow-blue-600/30 transition transform hover:scale-[1.02] active:scale-[0.98]"
               >
-                <option value="">Select your city</option>
-                {SA_CITIES.map(city => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-              </select>
-              {location === 'Other' && (
-                <input
-                  type="text"
-                  placeholder="Enter your city/town"
-                  value={customLocation}
-                  onChange={(e) => setCustomLocation(e.target.value)}
-                  className="w-full mt-3 px-4 py-3.5 bg-slate-900 border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 transition"
-                  required
-                />
-              )}
-              <p className="text-slate-500 text-xs mt-2">This helps clients find you nearby</p>
+                {loading ? 'Submitting...' : 'Submit for Verification'}
+              </button>
+              <p className="text-center text-gray-500 text-sm mt-3">
+                Your profile will be reviewed within 24 hours before going live on Shimla
+              </p>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold mb-2">Phone/WhatsApp Number</label>
-                <input
-                  type="tel"
-                  placeholder="078 060 8202"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-3.5 bg-slate-900 border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 transition"
-                  required
-                />
-                <p className="text-slate-500 text-xs mt-2">Clients will contact you on this number</p>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-2">Hourly Rate (ZAR) - Optional</label>
-                <input
-                  type="number"
-                  placeholder="150"
-                  value={hourlyRate}
-                  onChange={(e) => setHourlyRate(e.target.value)}
-                  className="w-full px-4 py-3.5 bg-slate-900 border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 transition"
-                  min="0"
-                />
-                <p className="text-slate-500 text-xs mt-2">You can discuss final price on WhatsApp</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Bio */}
-          <div className="bg-slate-800 border-slate-700 rounded-2xl p-5">
-            <label className="block text-lg font-semibold mb-2">About You</label>
-            <textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell clients about your experience, qualifications, areas you service..."
-              className="w-full px-4 py-3.5 bg-slate-900 border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 h-28 transition resize-none"
-              required
-              maxLength="200"
-            />
-            <p className="text-slate-500 text-xs mt-2">{bio.length}/200 characters</p>
-          </div>
-
-          {/* Submit */}
-          <button
-            disabled={loading || selectedSkills.length === 0 || !phone || !finalLocation}
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-600 disabled:cursor-not-allowed py-3.5 rounded-xl font-bold transition"
-          >
-            {loading ? 'Submitting for Verification...' : 'Submit for Verification'}
-          </button>
-          
-          <p className="text-xs text-slate-500 text-center">
-            Your profile will be reviewed within 24 hours before going live on Shimla
-          </p>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   )
 }
-
-export default Onboarding
