@@ -25,7 +25,7 @@ function ProtectedRoute({ children }) {
   return currentUser ? children : <Navigate to="/login" replace />
 }
 
-// Public Route - Only for NOT logged in users. Redirects to dashboard if already logged in
+// Public Route - Only for NOT logged in users
 function PublicRoute({ children }) {
   const { currentUser, loading } = useAuth()
   
@@ -37,10 +37,10 @@ function PublicRoute({ children }) {
     )
   }
   
-  return !currentUser ? children : <Navigate to="/" replace />
+  return !currentUser ? children : <Navigate to="/dashboard" replace />
 }
 
-// Onboarding Guard - Checks if user needs to complete profile
+// Onboarding Guard - Only runs when user IS logged in
 function OnboardingGuard({ children }) {
   const { currentUser, userData, loading } = useAuth()
   const navigate = useNavigate()
@@ -48,18 +48,17 @@ function OnboardingGuard({ children }) {
   const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
 
   useEffect(() => {
+    // Don't run if not logged in or still loading
     if (loading || !currentUser) return
 
     const isProfileComplete = userData?.name && userData?.surname && userData?.location
     
-    // If profile is incomplete AND we're not already on onboarding → go to onboarding
     if (!isProfileComplete && location.pathname !== '/onboarding' && !isAdmin) {
       navigate('/onboarding', { replace: true })
     }
     
-    // If profile IS complete AND we're on onboarding → go to dashboard
     if (isProfileComplete && location.pathname === '/onboarding') {
-      navigate('/', { replace: true })
+      navigate('/dashboard', { replace: true })
     }
   }, [loading, currentUser, userData, isAdmin, navigate, location.pathname])
 
@@ -88,22 +87,53 @@ function AdminRoute({ children }) {
   }
   
   if (!currentUser) return <Navigate to="/login" replace />
-  if (currentUser.email !== ADMIN_EMAIL) return <Navigate to="/" replace />
+  if (currentUser.email !== ADMIN_EMAIL) return <Navigate to="/dashboard" replace />
   
   return children
+}
+
+// Root Redirect - decides where to send user on "/"
+function RootRedirect() {
+  const { currentUser, userData, loading } = useAuth()
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+      </div>
+    )
+  }
+  
+  // If not logged in, go to login. Period.
+  if (!currentUser) {
+    return <Navigate to="/login" replace />
+  }
+  
+  // Only check profile if user is logged in
+  const isProfileComplete = userData?.name && userData?.surname && userData?.location
+  const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+  
+  if (!isProfileComplete && !isAdmin) {
+    return <Navigate to="/onboarding" replace />
+  }
+  
+  return <Navigate to="/dashboard" replace />
 }
 
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public Routes - Redirect to dashboard if already logged in */}
+      {/* Public Routes */}
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
       
-      {/* Protected Routes - Must be logged in + have complete profile */}
+      {/* Root route */}
+      <Route path="/" element={<RootRedirect />} />
+      
+      {/* Protected Routes */}
       <Route 
-        path="/" 
+        path="/dashboard" 
         element={
           <ProtectedRoute>
             <OnboardingGuard>
@@ -133,7 +163,7 @@ function AppRoutes() {
         } 
       />
       
-      {/* Onboarding Route - Must be logged in but profile can be incomplete */}
+      {/* Onboarding Route */}
       <Route 
         path="/onboarding" 
         element={
@@ -143,7 +173,7 @@ function AppRoutes() {
         } 
       />
       
-      {/* Admin Only Route */}
+      {/* Admin Route */}
       <Route 
         path="/admin" 
         element={
@@ -153,8 +183,8 @@ function AppRoutes() {
         } 
       />
       
-      {/* Catch all - redirect to dashboard if logged in, login if not */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {/* Catch all */}
+      <Route path="*" element={<RootRedirect />} />
     </Routes>
   )
 }
