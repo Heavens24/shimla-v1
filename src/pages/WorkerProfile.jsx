@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { doc, getDoc, collection, addDoc, query, where, getDocs, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, collection, addDoc, query, where, getDocs, serverTimestamp, setDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
 
@@ -12,30 +12,48 @@ function WorkerProfile() {
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const { currentUser } = useAuth()
+  const { currentUser, userData } = useAuth()
 
   useEffect(() => {
     async function fetchData() {
-      const workerDoc = await getDoc(doc(db, 'users', id))
-      if (workerDoc.exists()) setWorker({ id: workerDoc.id,...workerDoc.data() })
+      try {
+        const workerDoc = await getDoc(doc(db, 'users', id))
+        if (workerDoc.exists()) {
+          setWorker({ id: workerDoc.id,...workerDoc.data() })
+        }
 
-      const q = query(collection(db, 'reviews'), where('workerId', '==', id))
-      const querySnapshot = await getDocs(q)
-      const reviewsData = querySnapshot.docs.map(doc => ({ id: doc.id,...doc.data() }))
-      setReviews(reviewsData)
-      setLoading(false)
+        const q = query(collection(db, 'reviews'), where('workerId', '==', id))
+        const querySnapshot = await getDocs(q)
+        const reviewsData = querySnapshot.docs.map(doc => ({ id: doc.id,...doc.data() }))
+        setReviews(reviewsData)
+      } catch (err) {
+        console.error('Error fetching worker:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     fetchData()
   }, [id])
 
+  // Save to recent providers for clients
+  useEffect(() => {
+    if (currentUser && userData?.accountType === 'client' && worker && id) {
+      setDoc(doc(db, 'users', currentUser.uid, 'recentProviders', id), {
+        providerId: id,
+        lastViewed: serverTimestamp()
+      }, { merge: true }).catch(err => console.error('Error saving recent provider:', err))
+    }
+  }, [currentUser, userData, id, worker])
+
   const formatWhatsApp = (phone) => {
+    if (!phone) return ''
     const cleaned = phone.replace(/\D/g, '')
     if (cleaned.startsWith('0')) return '27' + cleaned.slice(1)
     return cleaned
   }
 
   const avgRating = reviews.length
-  ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
+   ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
     : null
 
   async function handleSubmitReview(e) {
@@ -43,24 +61,29 @@ function WorkerProfile() {
     if (!currentUser ||!comment.trim()) return
     setSubmitting(true)
 
-    await addDoc(collection(db, 'reviews'), {
-      workerId: id,
-      clientId: currentUser.uid,
-      clientEmail: currentUser.email,
-      rating,
-      comment,
-      createdAt: serverTimestamp()
-    })
+    try {
+      await addDoc(collection(db, 'reviews'), {
+        workerId: id,
+        clientId: currentUser.uid,
+        clientEmail: currentUser.email,
+        rating,
+        comment,
+        createdAt: serverTimestamp()
+      })
 
-    setComment('')
-    setRating(5)
-    setSubmitting(false)
+      setComment('')
+      setRating(5)
 
-    // Refresh reviews
-    const q = query(collection(db, 'reviews'), where('workerId', '==', id))
-    const querySnapshot = await getDocs(q)
-    const reviewsData = querySnapshot.docs.map(doc => ({ id: doc.id,...doc.data() }))
-    setReviews(reviewsData)
+      // Refresh reviews
+      const q = query(collection(db, 'reviews'), where('workerId', '==', id))
+      const querySnapshot = await getDocs(q)
+      const reviewsData = querySnapshot.docs.map(doc => ({ id: doc.id,...doc.data() }))
+      setReviews(reviewsData)
+    } catch (err) {
+      console.error('Error posting review:', err)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (loading) return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center"><p>Loading...</p></div>
@@ -76,9 +99,13 @@ function WorkerProfile() {
         <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold">{worker.companyName || worker.email.split('@')[0]}</h1>
+              <h1 className="text-3xl font-bold">
+                {worker.companyName || `${worker.name || ''} ${worker.surname || ''}`.trim()}
+              </h1>
               <div className="flex items-center gap-2 mt-2">
-                <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">✓ Verified</span>
+                {worker.verified && (
+                  <span className="text-xs bg-green-500/20 text-green-300 px-2 py-1 rounded">✓ Verified</span>
+                )}
                 <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">
                   {worker.accountType === 'business'? 'Business' : 'Individual'}
                 </span>
@@ -99,7 +126,7 @@ function WorkerProfile() {
             ))}
           </div>
 
-          <p className="text-slate-300 mb-4">{worker.bio}</p>
+          <p className="text-slate-300 mb-4">{worker.about || worker.bio}</p>
 
           {worker.hourlyRate && (
             <p className="text-green-400 font-semibold text-xl mb-4">From R{worker.hourlyRate}/hr</p>
@@ -123,7 +150,7 @@ function WorkerProfile() {
           </div>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6 mb-6">
+        <div className="bg-slate-800 border-slate-700 rounded-lg p-6 mb-6">
           <h2 className="text-2xl font-bold mb-4">Leave a Review</h2>
           {currentUser?.uid === id? (
             <p className="text-slate-400">You can't review yourself</p>
@@ -148,7 +175,7 @@ function WorkerProfile() {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="How was the service?"
-                className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 h-24"
+                className="w-full px-4 py-3 bg-slate-900 border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 h-24"
                 required
               />
               <button
@@ -162,7 +189,7 @@ function WorkerProfile() {
           )}
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-lg p-6">
+        <div className="bg-slate-800 border-slate-700 rounded-lg p-6">
           <h2 className="text-2xl font-bold mb-4">Reviews ({reviews.length})</h2>
           {reviews.length === 0? (
             <p className="text-slate-400">No reviews yet. Be the first!</p>
