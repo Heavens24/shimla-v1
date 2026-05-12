@@ -10,16 +10,13 @@ export default function Dashboard() {
   const [copySuccess, setCopySuccess] = useState(false)
 
   useEffect(() => {
-    const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+    if (loading || !userData) return
     
-    // If not admin and no userData → go to onboarding
-    if (!loading && !userData && !isAdmin) {
-      navigate('/onboarding')
-      return
-    }
-
-    // If userData exists but profile is incomplete → go to onboarding
-    if (!loading && userData && !isAdmin) {
+    const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+    const accountType = userData.accountType
+    
+    // Only providers need profile complete check
+    if ((accountType === 'individual' || accountType === 'business') && !isAdmin) {
       const isIncomplete = !userData.name || !userData.surname || !userData.location
       if (isIncomplete) {
         navigate('/onboarding')
@@ -48,7 +45,7 @@ export default function Dashboard() {
   
   const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
 
-  // ADMIN VIEW - Premium Instagram-style design
+  // ADMIN VIEW
   if (isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -110,14 +107,13 @@ export default function Dashboard() {
   const isBusiness = userData.accountType === 'business'
   const isClient = userData.accountType === 'client'
 
-  // VERIFICATION GATE - Only show if profile is COMPLETE but not verified
+  // VERIFICATION GATE - Only for providers
   const isProfileComplete = userData.name && userData.surname && userData.location && userData.skills?.length > 0
   if ((isIndividual || isBusiness) && isProfileComplete && !isVerified) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
         <div className="max-w-md w-full">
           <div className="bg-white border-gray-200 rounded-3xl shadow-2xl p-8 text-center">
-            
             <div className="relative mb-6">
               <div className="w-20 h-20 bg-gradient-to-br from-blue-50 to-blue-100 rounded-full flex items-center justify-center mx-auto shadow-lg">
                 <svg className="w-10 h-10 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,42 +145,6 @@ export default function Dashboard() {
               >
                 {copySuccess ? '✓ Copied to Clipboard!' : 'Copy UID'}
               </button>
-              <p className="text-xs text-blue-800 mt-3 text-center">
-                Send this UID to the admin on WhatsApp after you complete the R10 payment
-              </p>
-            </div>
-
-            <div className="bg-gray-50 border-gray-200 rounded-2xl p-4 mb-6 text-left">
-              <h3 className="text-sm font-semibold text-gray-900 mb-3">What happens next?</h3>
-              <div className="space-y-2">
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-blue-600">1</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Admin verifies your profile</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-blue-600">2</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Complete R10 payment via WhatsApp</p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-xs font-bold text-blue-600">3</span>
-                  </div>
-                  <p className="text-sm text-gray-700">Your profile goes live on Shimla</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-green-50 border-green-200 rounded-2xl p-4 mb-6">
-              <p className="text-sm text-green-800 font-medium">
-                💙 We’re here to help you succeed on Shimla
-              </p>
-              <p className="text-xs text-green-700 mt-1">
-                Questions? Reach out to us on WhatsApp anytime
-              </p>
             </div>
 
             <button 
@@ -194,16 +154,12 @@ export default function Dashboard() {
               Logout
             </button>
           </div>
-
-          <p className="text-center text-gray-500 text-xs mt-6">
-            Shimla • South Africa’s trusted service platform
-          </p>
         </div>
       </div>
     )
   }
 
-  // CLIENT DASHBOARD - Premium Instagram-style
+  // CLIENT DASHBOARD
   if (isClient) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
@@ -263,35 +219,16 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white border-gray-200 rounded-2xl shadow-md p-6 text-center">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <span className="text-blue-600 font-bold">1</span>
-              </div>
-              <p className="font-semibold text-gray-900 mb-1">Browse</p>
-              <p className="text-sm text-gray-600">Find providers by skill and location</p>
-            </div>
-            <div className="bg-white border-gray-200 rounded-2xl shadow-md p-6 text-center">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <span className="text-blue-600 font-bold">2</span>
-              </div>
-              <p className="font-semibold text-gray-900 mb-1">Contact</p>
-              <p className="text-sm text-gray-600">Reach out via WhatsApp</p>
-            </div>
-            <div className="bg-white border-gray-200 rounded-2xl shadow-md p-6 text-center">
-              <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <span className="text-blue-600 font-bold">3</span>
-              </div>
-              <p className="font-semibold text-gray-900 mb-1">Hire</p>
-              <p className="text-sm text-gray-600">Discuss price and get the job done</p>
-            </div>
+          <div className="bg-white border-gray-200 rounded-3xl shadow-lg p-8">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Providers</h3>
+            <p className="text-gray-600">Feature coming soon: keep track of providers you’ve hired and rate them.</p>
           </div>
         </div>
       </div>
     )
   }
 
-  // PROVIDER DASHBOARD - Premium Instagram-style
+  // PROVIDER DASHBOARD - unchanged from your version
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
       <div className="max-w-4xl mx-auto px-4 py-12">

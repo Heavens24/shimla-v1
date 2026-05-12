@@ -37,10 +37,10 @@ function PublicRoute({ children }) {
     )
   }
   
-  return !currentUser ? children : <Navigate to="/dashboard" replace />
+  return !currentUser ? children : <Navigate to="/" replace />
 }
 
-// Onboarding Guard - Only runs when user IS logged in
+// Onboarding Guard - Only for providers who need to complete profile
 function OnboardingGuard({ children }) {
   const { currentUser, userData, loading } = useAuth()
   const navigate = useNavigate()
@@ -48,16 +48,24 @@ function OnboardingGuard({ children }) {
   const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
 
   useEffect(() => {
-    // Don't run if not logged in or still loading
     if (loading || !currentUser) return
+    if (isAdmin) return
 
+    const accountType = userData?.accountType
     const isProfileComplete = userData?.name && userData?.surname && userData?.location
     
-    if (!isProfileComplete && location.pathname !== '/onboarding' && !isAdmin) {
-      navigate('/onboarding', { replace: true })
+    // Only force providers to onboarding
+    if (accountType === 'individual' || accountType === 'business') {
+      if (!isProfileComplete && location.pathname !== '/onboarding') {
+        navigate('/onboarding', { replace: true })
+      }
+      if (isProfileComplete && location.pathname === '/onboarding') {
+        navigate('/dashboard', { replace: true })
+      }
     }
     
-    if (isProfileComplete && location.pathname === '/onboarding') {
+    // Clients never go to onboarding
+    if (accountType === 'client' && location.pathname === '/onboarding') {
       navigate('/dashboard', { replace: true })
     }
   }, [loading, currentUser, userData, isAdmin, navigate, location.pathname])
@@ -104,16 +112,26 @@ function RootRedirect() {
     )
   }
   
-  // If not logged in, go to login. Period.
   if (!currentUser) {
     return <Navigate to="/login" replace />
   }
   
-  // Only check profile if user is logged in
-  const isProfileComplete = userData?.name && userData?.surname && userData?.location
   const isAdmin = currentUser?.email === 'rasemetselebohang24@gmail.com'
+  const accountType = userData?.accountType
+  const isProfileComplete = userData?.name && userData?.surname && userData?.location
   
-  if (!isProfileComplete && !isAdmin) {
+  // Admin goes to admin panel
+  if (isAdmin) {
+    return <Navigate to="/admin" replace />
+  }
+  
+  // Clients go to dashboard/browse
+  if (accountType === 'client') {
+    return <Navigate to="/dashboard" replace />
+  }
+  
+  // Providers check onboarding
+  if (!isProfileComplete) {
     return <Navigate to="/onboarding" replace />
   }
   
@@ -131,7 +149,7 @@ function AppRoutes() {
       {/* Root route */}
       <Route path="/" element={<RootRedirect />} />
       
-      {/* Protected Routes */}
+      {/* Protected Routes - OnboardingGuard only applies to providers */}
       <Route 
         path="/dashboard" 
         element={
@@ -163,7 +181,7 @@ function AppRoutes() {
         } 
       />
       
-      {/* Onboarding Route */}
+      {/* Onboarding Route - providers only */}
       <Route 
         path="/onboarding" 
         element={

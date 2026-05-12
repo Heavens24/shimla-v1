@@ -7,7 +7,7 @@ import { auth, db } from '../firebase'
 export default function Signup() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [accountType, setAccountType] = useState('individual')
+  const [accountType, setAccountType] = useState('client') // default to client
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -20,7 +20,7 @@ export default function Signup() {
       setLoading(true)
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       
-      // Create user document in Firestore
+      // Create user document in Firestore with role
       await setDoc(doc(db, 'users', userCredential.user.uid), {
         email: email,
         accountType: accountType,
@@ -29,7 +29,12 @@ export default function Signup() {
         createdAt: new Date().toISOString()
       })
       
-      navigate('/onboarding')
+      // Redirect based on role
+      if (accountType === 'client') {
+        navigate('/dashboard')
+      } else {
+        navigate('/onboarding')
+      }
     } catch (err) {
       setError(err.message)
     } finally {

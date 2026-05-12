@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
     })
 
     return unsubscribe
-  }, []) // <- Empty dependency array is critical. This only runs once on mount.
+  }, [])
 
   const value = {
     currentUser,
