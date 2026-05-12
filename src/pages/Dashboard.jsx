@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth, db } from '../firebase'
-import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore'
+import { collection, query, orderBy, limit, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore'
 
 export default function Dashboard() {
   const { currentUser, userData, loading } = useAuth()
@@ -57,6 +57,18 @@ export default function Dashboard() {
       console.error('Error fetching recent providers:', err)
     } finally {
       setLoadingRecent(false)
+    }
+  }
+
+  async function removeRecentProvider(providerId, e) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!currentUser) return
+    try {
+      await deleteDoc(doc(db, 'users', currentUser.uid, 'recentProviders', providerId))
+      setRecentProviders(prev => prev.filter(p => p.providerId!== providerId))
+    } catch (err) {
+      console.error('Error removing recent provider:', err)
     }
   }
 
@@ -257,29 +269,37 @@ export default function Dashboard() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {recentProviders.map((provider) => (
-                  <Link
+                  <div
                     key={provider.id}
-                    to={`/worker/${provider.providerId}`}
-                    className="border border-gray-200 rounded-2xl p-4 hover:shadow-md transition hover:border-blue-300"
+                    className="relative border-gray-200 rounded-2xl p-4 hover:shadow-md transition hover:border-blue-300 group"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center text-white font-bold">
-                        {provider.name?.[0] || 'P'}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-gray-900">{provider.name} {provider.surname}</h4>
-                        <p className="text-sm text-gray-600">{provider.skills?.slice(0, 2).join(', ')}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-sm font-medium text-gray-900">R{provider.hourlyRate || 'N/A'}/hr</span>
-                          {provider.verified && (
-                            <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
-                              Verified
-                            </span>
-                          )}
+                    <button
+                      onClick={(e) => removeRecentProvider(provider.providerId, e)}
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1 rounded-lg text-xs font-semibold"
+                    >
+                      Remove
+                    </button>
+
+                    <Link to={`/worker/${provider.providerId}`} className="block">
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl flex items-center justify-center text-white font-bold">
+                          {provider.name?.[0] || 'P'}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-900">{provider.name} {provider.surname}</h4>
+                          <p className="text-sm text-gray-600">{provider.skills?.slice(0, 2).join(', ')}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-sm font-medium text-gray-900">R{provider.hourlyRate || 'N/A'}/hr</span>
+                            {provider.verified && (
+                              <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                                Verified
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                  </div>
                 ))}
               </div>
             )}
